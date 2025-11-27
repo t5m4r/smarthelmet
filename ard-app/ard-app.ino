@@ -12,9 +12,9 @@
 
 int wifiConnectionStatus = WL_IDLE_STATUS;
 
-BLEService tusharHeadsUpDisplayService("19B10001-E8F2-537E-4F6C-D104768A1225");  // Bluetooth® Low Energy LED Service
+BLEService smartHelmetService("19B10001-E8F2-537E-4F6C-D104768A1225");  // Bluetooth® Low Energy LED Service
 // Bluetooth® Low Energy LED Switch Characteristic - custom 128-bit UUID, read and writable by central
-BLEStringCharacteristic textCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite | BLENotify, 100);
+BLEStringCharacteristic textCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite | BLENotify, 128);
 
 // WiFiSSLClient is a Minimilist TLS client, but is difficult to use with Google APIs since it doesn't support HTTP helper functions/features.
 WiFiSSLClient wifiSslClient;
@@ -39,11 +39,11 @@ void setup() {
   BLE.setLocalName("T5M4R-ARD");
   BLE.setDeviceName("T5M4R-ARD");
 
-  BLE.setAdvertisedService(tusharHeadsUpDisplayService);  // add the service UUID
+  BLE.setAdvertisedService(smartHelmetService);  // add the service UUID
 
   textCharacteristic.writeValue("UNINIT VALUE");  // set initial value for this characteristic
-  tusharHeadsUpDisplayService.addCharacteristic(textCharacteristic);
-  BLE.addService(tusharHeadsUpDisplayService);  // Add the battery service
+  smartHelmetService.addCharacteristic(textCharacteristic);
+  BLE.addService(smartHelmetService);  // Add the battery service
   // assign event handlers for connected, disconnected to peripheral
   BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
   BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
@@ -89,8 +89,6 @@ void setup() {
   if (wifiConnectionStatus == WL_CONNECTED) {
     printWifiStatus();
   }
-
-  Serial.println(buildGoogleNavigationUrlPath("560102", "560103"));
 }
 
 void loop() {
@@ -145,7 +143,7 @@ void loop() {
   if (doHttpWork) {
     // This is the official project's ArduinoHttpClient library from the Library Manager
     HttpClient httpsClient = HttpClient(wifiSslClient, kHostname, HttpClient::kHttpsPort);
-    err = httpsClient.get(buildGoogleNavigationUrlPath("560102", "560103"));
+    err = httpsClient.get(buildGoogleNavigationUrlPath("560102", "560103", googleMapsApiKey));
     if (err == 0) {
       int httpResponseCode = httpsClient.responseStatusCode();
       if (httpResponseCode >= 0) {

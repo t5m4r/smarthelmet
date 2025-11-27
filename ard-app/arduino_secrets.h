@@ -2,3 +2,4 @@
 char ssid[] = "CALVIN";  // your network SSID (name)
 char pass[] = "DEADCOFFEE1";  // your network password (use for WPA, or use as key for WEP)
 
+const String googleMapsApiKey = "";
