@@ -4,4 +4,4 @@
 // Number of milliseconds to wait without receiving any data before we give up
 const int kNetworkTimeout = 30*1000;
 // Number of milliseconds to wait if no data is available before trying again
-const int kNetworkDelay = 1000;
+const int kNetworkDelay = 300;

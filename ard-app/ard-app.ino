@@ -7,7 +7,6 @@
 
 // local header file for secrets stashing; keep this last in the header list
 #include "arduino_secrets.h"
-
 #include "configurations.h"
 
 int wifiConnectionStatus = WL_IDLE_STATUS;
@@ -22,6 +21,7 @@ WiFiSSLClient wifiSslClient;
 extern const char kHostname[];
 
 long previousMillis = 0;  // last time the repeat work was done
+int current_step = 0;
 
 
 void setup() {
@@ -108,31 +108,9 @@ void loop() {
     printWifiStatus();
   }
 
-
   // BT-LE repeat work
   // wait for a Bluetooth® Low Energy central
   BLEDevice central = BLE.central();
-  // if a central is connected to the peripheral:
-  if (central) {
-    Serial.print("Connected to central: ");
-    // print the central's BT address:
-    Serial.println(central.address());
-    textCharacteristic.writeValue("YOLO TUSHAR! FIRST");
-    // check the battery level every 200 ms
-    // while the central is connected:
-    while (central.connected()) {
-      long currentMillis = millis();
-      // if 200 ms have passed, check the battery level:
-      if (currentMillis - previousMillis >= 200) {
-        previousMillis = currentMillis;
-        textCharacteristic.writeValue("YOLO TUSHAR! AGAIN :)");
-      }
-    }
-    // when the central disconnects, turn off the LED:
-    digitalWrite(LED_BUILTIN, LOW);
-    Serial.print("Disconnected from central: ");
-    Serial.println(central.address());
-  }
   // BT-LE end of repeat work
 
   // Add real work below this line
@@ -162,31 +140,25 @@ void loop() {
         int bodyLen = httpsClient.contentLength();
         Serial.println("HTTP response's content length is: " + String(bodyLen) + " bytes");
 
-        // Now we've got to the body, so we can print it out
+        // Now we've got to the HTTP response body, so we can feed it to a JSON processor/parser.
+        JsonDocument jsonDoc;
         unsigned long timeoutStart = millis();
-        char c;
         // Whilst we haven't timed out & haven't reached the end of the body
         while ((httpsClient.connected() || httpsClient.available()) && (!httpsClient.endOfBodyReached()) && ((millis() - timeoutStart) < kNetworkTimeout)) {
           if (httpsClient.available()) {
-            JsonDocument jsonDoc;
             DeserializationError error = deserializeJson(jsonDoc, httpsClient);
             switch (error.code()) {
               case DeserializationError::Ok:
-                Serial.println(String("Deserialization of JSON succeeded. ") + String("API Response: ") + String(jsonDoc["ip"].as<const char*>()));
-                httpsClient.stop();  // This marks as this request-request pair as successfully done, and effectively helps us break out from the while() loop above.
-                break;
-              case DeserializationError::InvalidInput:
-                Serial.println("Deserialization of JSON - Invalid input!");
-                break;
-              case DeserializationError::NoMemory:
-                Serial.println("Deserialization of JSON - Not enough memory");
+                Serial.println(String("Deserialization of JSON succeeded. "));
                 httpsClient.stop();  // This marks as this request-request pair as successfully done, and effectively helps us break out from the while() loop above.
                 break;
               case DeserializationError::EmptyInput:
                 Serial.println("Deserialization of JSON - No data to parse");  // We don't .stop() the HTTP request in this case, as we may need to wait for data to be available.
                 break;
+              case DeserializationError::InvalidInput:
+              case DeserializationError::NoMemory:
               default:
-                Serial.println("Deserialization failed");
+                Serial.println("Deserialization failed! " + error.code());
                 httpsClient.stop();  // This marks as this request-request pair as successfully done, and effectively helps us break out from the while() loop above.
                 break;
             }
@@ -198,6 +170,26 @@ void loop() {
             delay(kNetworkDelay);
           }
         }  // While loop for waiting for, plus reading the response of a single API request/response
+
+        // Processing of JSON document from HTTP API response
+        JsonArray steps = jsonDoc["routes"][0]["legs"][0]["steps"];
+        Serial.println("Number of steps is: " + String(steps.size()));
+        if (current_step >= steps.size()) {
+          Serial.println("Reseting step counter to first. ");
+          current_step = 0;
+        }
+        Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
+        Serial.println(steps[current_step]["html_instructions"].as<const char*>());
+        if (steps[current_step]["maneuver"].is<String>()) {
+          const char* maneuver = steps[current_step]["maneuver"];
+          String distance = steps[current_step]["distance"]["text"];
+          Serial.print("STEP " + String(current_step) + " -> Maneuver ");
+          Serial.print(maneuver);
+          Serial.print(" in ");
+          Serial.println(distance);
+        }
+        current_step++;
+
       } else {
         Serial.println("Error getting HTTP response, code " + httpResponseCode);
       }
@@ -210,7 +202,7 @@ void loop() {
   // Add real work ABOVE THIS LINE
 
   // Idle time
-  const unsigned long sleepTime = 10000;
+  const unsigned long sleepTime = 3000;
   Serial.println("Me lazy, sleeping for " + String(sleepTime / 1000) + "s");
   delay(sleepTime);
 }
