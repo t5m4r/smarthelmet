@@ -32,7 +32,7 @@ long previousMillis = 0;  // last time the repeat work was done
 
 void setup() {
   //Initialize serial and wait for port to open:
-  Serial.begin(115200);  // Let it rip!
+  Serial.begin(115200);  // Let it rip
   while (!Serial)
     ;
 
