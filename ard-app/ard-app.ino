@@ -12,20 +12,14 @@
 
 int wifiConnectionStatus = WL_IDLE_STATUS;
 
-// Name of the server we want to connect to
-const char kHostname[] = "icanhazip.com";
-// Path to download (this is the bit after the hostname in the URL that you want to download
-const char kPath[] = "/";
-
-
 BLEService tusharHeadsUpDisplayService("19B10001-E8F2-537E-4F6C-D104768A1225");  // Bluetooth® Low Energy LED Service
 // Bluetooth® Low Energy LED Switch Characteristic - custom 128-bit UUID, read and writable by central
 BLEStringCharacteristic textCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite | BLENotify, 100);
 
 // WiFiSSLClient is a Minimilist TLS client, but is difficult to use with Google APIs since it doesn't support HTTP helper functions/features.
 WiFiSSLClient wifiSslClient;
-// This is the official project's ArduinoHttpClient library from the Library Manager
-HttpClient httpsClient = HttpClient(wifiSslClient, kHostname, HttpClient::kHttpsPort);
+// API hostname is actually set in 03_map_navigation.ino
+extern const char kHostname[];
 
 long previousMillis = 0;  // last time the repeat work was done
 
@@ -95,6 +89,8 @@ void setup() {
   if (wifiConnectionStatus == WL_CONNECTED) {
     printWifiStatus();
   }
+
+  Serial.println(buildGoogleNavigationUrlPath("560102", "560103"));
 }
 
 void loop() {
@@ -147,7 +143,9 @@ void loop() {
   bool doHttpWork = true;
 
   if (doHttpWork) {
-    err = httpsClient.get(kPath);
+    // This is the official project's ArduinoHttpClient library from the Library Manager
+    HttpClient httpsClient = HttpClient(wifiSslClient, kHostname, HttpClient::kHttpsPort);
+    err = httpsClient.get(buildGoogleNavigationUrlPath("560102", "560103"));
     if (err == 0) {
       int httpResponseCode = httpsClient.responseStatusCode();
       if (httpResponseCode >= 0) {

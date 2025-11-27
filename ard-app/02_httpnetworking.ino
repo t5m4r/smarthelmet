@@ -75,21 +75,3 @@ void printWifiStatus() {
   Serial.println("Board is connected to WiFi: SSID " + String(connectedSsid) + ", local IP " + ip.toString() + ", and signal strength " + String(sigStrength) + "dBm");
 
 }
-
-/* just wrap the received data up to 80 columns in the serial print*/
-/* -------------------------------------------------------------------------- */
-void readHttpResponse() {
-  /* -------------------------------------------------------------------------- */
-  uint32_t received_data_num = 0;
-  while (httpsClient.available()) {
-    /* actual data reception */
-    char c = httpsClient.read();
-    /* print data to serial port */
-    Serial.print(c);
-    /* wrap data to 80 columns*/
-    received_data_num++;
-    if (received_data_num % 80 == 0) {
-      Serial.println();
-    }
-  }
-}
