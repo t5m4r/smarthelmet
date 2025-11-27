@@ -13,9 +13,9 @@
 int wifiConnectionStatus = WL_IDLE_STATUS;
 
 // Name of the server we want to connect to
-const char kHostname[] = "ep.api.getfastah.com";
+const char kHostname[] = "icanhazip.com";
 // Path to download (this is the bit after the hostname in the URL that you want to download
-const char kPath[] = "/whereis/v1/json/auto?fastah-key=638eec4613e64929aa0a4d7505b6d8cb";
+const char kPath[] = "/";
 
 
 BLEService tusharHeadsUpDisplayService("19B10001-E8F2-537E-4F6C-D104768A1225");  // Bluetooth® Low Energy LED Service
