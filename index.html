@@ -72,38 +72,46 @@
                   <label class="form-label small" for="serviceUuid">Service UUID</label>
                   <input type="text" id="serviceUuid" class="form-control form-control-sm" placeholder="19B10001-E8F2-537E-4F6C-D104768A1225">
                 </div>
-                <div class="mb-2">
-                  <label class="form-label small" for="txUuid">TX Characteristic UUID</label>
-                  <input type="text" id="txUuid" class="form-control form-control-sm" placeholder="19B10002-E8F2-537E-4F6C-D104768A1214">
-                </div>
-                <div class="mb-2">
-                  <label class="form-label small" for="rxUuid">RX Characteristic UUID</label>
-                  <input type="text" id="rxUuid" class="form-control form-control-sm" placeholder="19B10002-E8F2-537E-4F6C-D104768A1214">
-                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right column: Messages & Log card -->
+      <!-- Right column: Commands & Log card -->
       <div class="col-md-7 mb-3">
         <div class="card h-100">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Messages &amp; Live Log</span>
+            <span>Commands &amp; Live Log</span>
             <button id="clearLog" type="button" class="btn btn-outline-secondary btn-sm">Clear Log</button>
           </div>
           <div class="card-body">
-            <!-- Message send form -->
-            <form class="row g-2 align-items-center mb-3" onsubmit="return false;">
-              <div class="col-sm-8">
-                <label class="visually-hidden" for="messageInput">Message</label>
-                <input id="messageInput" type="text" class="form-control" value="PING" placeholder="Message to send" disabled>
+            <!-- Command send form -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold" for="commandInput">Command</label>
+              <div class="input-group">
+                <input id="commandInput" type="text" class="form-control" value="PING" placeholder="Command to send" disabled>
+                <button id="sendCommand" type="button" class="btn btn-primary" disabled>Send Command</button>
               </div>
-              <div class="col-sm-4 d-grid">
-                <button id="sendMessage" type="button" class="btn btn-primary" disabled>Send</button>
+            </div>
+
+            <!-- Navigation form -->
+            <div class="mb-3 p-2 border rounded bg-body-secondary">
+              <label class="form-label small fw-bold">Navigation</label>
+              <div class="row g-2">
+                <div class="col-sm-6">
+                  <label class="form-label small" for="navOriginInput">Origin</label>
+                  <input id="navOriginInput" type="text" class="form-control form-control-sm" placeholder="e.g., 560102" disabled>
+                </div>
+                <div class="col-sm-6">
+                  <label class="form-label small" for="navDestInput">Destination</label>
+                  <input id="navDestInput" type="text" class="form-control form-control-sm" placeholder="e.g., 560103" disabled>
+                </div>
               </div>
-            </form>
+              <div class="d-grid mt-2">
+                <button id="sendNavigation" type="button" class="btn btn-success btn-sm" disabled>Send Navigation</button>
+              </div>
+            </div>
 
             <!-- Log output -->
             <div id="output" class="border rounded">
@@ -179,9 +187,16 @@
         updateUiState();
       }
     });
-    document.querySelector('#sendMessage').addEventListener('click', async function() {
+    document.querySelector('#sendCommand').addEventListener('click', async function() {
       try {
-        await onSendMessageButtonClick();
+        await onSendCommandButtonClick();
+      } catch (error) {
+        log('Argh! ' + error);
+      }
+    });
+    document.querySelector('#sendNavigation').addEventListener('click', async function() {
+      try {
+        await onSendNavigationButtonClick();
       } catch (error) {
         log('Argh! ' + error);
       }

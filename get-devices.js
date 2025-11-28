@@ -1,11 +1,13 @@
-const DEFAULT_UART_SERVICE_UUID = '19B10001-E8F2-537E-4F6C-D104768A1225';
-const DEFAULT_UART_TX_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A1214';
-const DEFAULT_UART_RX_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A1214';
+const DEFAULT_SERVICE_UUID = '19B10001-E8F2-537E-4F6C-D104768A1225';
+const DEFAULT_COMMAND_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A1214';
+const DEFAULT_NAV_ORIGIN_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A1215';
+const DEFAULT_NAV_DEST_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A1216';
+
 let activeDevice = null;
-let uartTxCharacteristic = null;
-let uartRxCharacteristic = null;
+let commandCharacteristic = null;
+let navOriginCharacteristic = null;
+let navDestCharacteristic = null;
 const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
 let isConnecting = false;
 let isScanning = false;
 
@@ -18,14 +20,17 @@ function updateUiState() {
   const connectButton = document.querySelector('#connectBluetoothDevice');
   const connectSpinner = document.querySelector('#connectSpinner');
   const connectButtonText = document.querySelector('#connectButtonText');
-  const messageInput = document.querySelector('#messageInput');
-  const sendButton = document.querySelector('#sendMessage');
+  const commandInput = document.querySelector('#commandInput');
+  const sendCommandButton = document.querySelector('#sendCommand');
+  const navOriginInput = document.querySelector('#navOriginInput');
+  const navDestInput = document.querySelector('#navDestInput');
+  const sendNavButton = document.querySelector('#sendNavigation');
   const statusBadge = document.querySelector('#connectionStatusBadge');
   const connectionCard = document.querySelector('#connectionCard');
 
   const hasDevices = devicesSelect && devicesSelect.options.length > 0 && devicesSelect.options[0].value !== '';
   const hasSelection = devicesSelect && devicesSelect.value && devicesSelect.value !== '';
-  const isConnected = !!(activeDevice && activeDevice.gatt && activeDevice.gatt.connected && uartTxCharacteristic);
+  const isConnected = !!(activeDevice && activeDevice.gatt && activeDevice.gatt.connected && commandCharacteristic);
 
   // Scan button
   if (scanButton) {
@@ -67,9 +72,14 @@ function updateUiState() {
     }
   }
 
-  // Message input and send button
-  if (messageInput) messageInput.disabled = !isConnected;
-  if (sendButton) sendButton.disabled = !isConnected;
+  // Command input and send button
+  if (commandInput) commandInput.disabled = !isConnected;
+  if (sendCommandButton) sendCommandButton.disabled = !isConnected;
+  
+  // Navigation inputs and send button
+  if (navOriginInput) navOriginInput.disabled = !isConnected;
+  if (navDestInput) navDestInput.disabled = !isConnected;
+  if (sendNavButton) sendNavButton.disabled = !isConnected;
 
   // Status badge
   if (statusBadge) {
@@ -121,15 +131,14 @@ function populateBluetoothDevices() {
 
 function getBleConfig() {
   const serviceInput = document.querySelector('#serviceUuid');
-  const txInput = document.querySelector('#txUuid');
-  const rxInput = document.querySelector('#rxUuid');
-  const serviceUuid = (serviceInput?.value || DEFAULT_UART_SERVICE_UUID).trim().toLowerCase();
-  const txUuid = (txInput?.value || DEFAULT_UART_TX_CHARACTERISTIC_UUID).trim().toLowerCase();
-  const rxUuid = (rxInput?.value || DEFAULT_UART_RX_CHARACTERISTIC_UUID).trim().toLowerCase();
-  if (serviceUuid !== DEFAULT_UART_SERVICE_UUID) {
-    log('Using custom UART Service UUID: ' + serviceUuid);
+  const serviceUuid = (serviceInput?.value || DEFAULT_SERVICE_UUID).trim().toLowerCase();
+  const commandUuid = DEFAULT_COMMAND_CHARACTERISTIC_UUID.toLowerCase();
+  const navOriginUuid = DEFAULT_NAV_ORIGIN_CHARACTERISTIC_UUID.toLowerCase();
+  const navDestUuid = DEFAULT_NAV_DEST_CHARACTERISTIC_UUID.toLowerCase();
+  if (serviceUuid !== DEFAULT_SERVICE_UUID.toLowerCase()) {
+    log('Using custom Service UUID: ' + serviceUuid);
   }
-  return { serviceUuid, txUuid, rxUuid };
+  return { serviceUuid, commandUuid, navOriginUuid, navDestUuid };
 }
 
 function onRequestBluetoothDeviceButtonClick() {
@@ -235,12 +244,12 @@ async function connectSelectedBluetoothDevice() {
   if (isConnecting) {
     throw new Error('Connection attempt already in progress.');
   }
-  const { serviceUuid, txUuid, rxUuid } = getBleConfig();
+  const { serviceUuid, commandUuid, navOriginUuid, navDestUuid } = getBleConfig();
   const device = await getSelectedDevice();
   if (activeDevice && activeDevice.id !== device.id) {
     resetConnectionState();
   }
-  if (device.gatt.connected && uartTxCharacteristic) {
+  if (device.gatt.connected && commandCharacteristic) {
     activeDevice = device;
     log('Already connected to peripheral: ' + (device.name || device.id));
     updateUiState();
@@ -256,26 +265,19 @@ async function connectSelectedBluetoothDevice() {
     const server = await device.gatt.connect();
     log('  GATT server connected, discovering services...');
     
-    // Debug: list ALL services the peripheral exposes
-    const allServices = await server.getPrimaryServices();
-    log('  Peripheral exposes ' + allServices.length + ' service(s):');
-    for (const svc of allServices) {
-      log('    - ' + svc.uuid);
-    }
-    
-    if (uartRxCharacteristic) {
-      uartRxCharacteristic.removeEventListener('characteristicvaluechanged', handleIncomingMessage);
-    }
     log('  Looking for service: ' + serviceUuid);
     const service = await server.getPrimaryService(serviceUuid);
     log('  Found primary service: ' + service.uuid);
-    uartRxCharacteristic = await service.getCharacteristic(rxUuid);
-    log('  Found RX characteristic: ' + uartRxCharacteristic.uuid);
-    uartTxCharacteristic = await service.getCharacteristic(txUuid);
-    log('  Found TX characteristic: ' + uartTxCharacteristic.uuid);
-    await uartRxCharacteristic.startNotifications();
-    log('  Notifications started on RX characteristic');
-    uartRxCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingMessage);
+    
+    commandCharacteristic = await service.getCharacteristic(commandUuid);
+    log('  Found Command characteristic: ' + commandCharacteristic.uuid);
+    
+    navOriginCharacteristic = await service.getCharacteristic(navOriginUuid);
+    log('  Found NavOrigin characteristic: ' + navOriginCharacteristic.uuid);
+    
+    navDestCharacteristic = await service.getCharacteristic(navDestUuid);
+    log('  Found NavDestination characteristic: ' + navDestCharacteristic.uuid);
+    
     log('Connected to peripheral: ' + (device.name || device.id));
     await logGattServerDetails(server, serviceUuid);
   } finally {
@@ -284,25 +286,40 @@ async function connectSelectedBluetoothDevice() {
   }
 }
 
-async function onSendMessageButtonClick() {
-  const input = document.querySelector('#messageInput');
-  const message = (input.value || 'PING').trim();
-  if (!message) {
-    throw new Error('Message cannot be blank.');
+async function onSendCommandButtonClick() {
+  const input = document.querySelector('#commandInput');
+  const command = (input.value || 'PING').trim();
+  if (!command) {
+    throw new Error('Command cannot be blank.');
   }
   await connectSelectedBluetoothDevice();
-  if (!uartTxCharacteristic) {
-    throw new Error('UART write characteristic not available.');
+  if (!commandCharacteristic) {
+    throw new Error('Command characteristic not available.');
   }
-  await uartTxCharacteristic.writeValue(textEncoder.encode(message));
-  log('>> ' + message);
+  await commandCharacteristic.writeValue(textEncoder.encode(command));
+  log('>> Command: ' + command);
 }
 
-function handleIncomingMessage(event) {
-  const view = event.target.value;
-  const data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-  const message = textDecoder.decode(data);
-  log('<< ' + message.trim());
+async function onSendNavigationButtonClick() {
+  const originInput = document.querySelector('#navOriginInput');
+  const destInput = document.querySelector('#navDestInput');
+  const origin = (originInput.value || '').trim();
+  const destination = (destInput.value || '').trim();
+  
+  if (!origin || !destination) {
+    throw new Error('Both origin and destination are required.');
+  }
+  
+  await connectSelectedBluetoothDevice();
+  if (!navOriginCharacteristic || !navDestCharacteristic) {
+    throw new Error('Navigation characteristics not available.');
+  }
+  
+  await navOriginCharacteristic.writeValue(textEncoder.encode(origin));
+  log('>> Origin: ' + origin);
+  
+  await navDestCharacteristic.writeValue(textEncoder.encode(destination));
+  log('>> Destination: ' + destination);
 }
 
 function handleDisconnection(event) {
@@ -312,15 +329,13 @@ function handleDisconnection(event) {
 }
 
 function resetConnectionState() {
-  if (uartRxCharacteristic) {
-    uartRxCharacteristic.removeEventListener('characteristicvaluechanged', handleIncomingMessage);
-  }
   if (activeDevice) {
     activeDevice.removeEventListener('gattserverdisconnected', handleDisconnection);
   }
   activeDevice = null;
-  uartTxCharacteristic = null;
-  uartRxCharacteristic = null;
+  commandCharacteristic = null;
+  navOriginCharacteristic = null;
+  navDestCharacteristic = null;
   updateUiState();
 }
 
