@@ -116,7 +116,7 @@ void loop() {
   // Add real work below this line
 
   int err = 0;
-  bool doHttpWork = true;
+  bool doHttpWork = false;
 
   if (doHttpWork) {
     // This is the official project's ArduinoHttpClient library from the Library Manager
