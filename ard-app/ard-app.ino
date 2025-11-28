@@ -99,11 +99,10 @@ void loop() {
     listNetworks();
   }
 
-  byte mac[6];
-  WiFi.macAddress(mac);
-  Serial.println();
-  Serial.print("Board's MAC Address: ");
-  printMacAddress(mac);
+  //byte mac[6];
+  //WiFi.macAddress(mac);
+  //Serial.print("Board's MAC Address: ");
+  //printMacAddress(mac);
   if (wifiConnectionStatus == WL_CONNECTED) {
     printWifiStatus();
   }
@@ -202,7 +201,7 @@ void loop() {
   // Add real work ABOVE THIS LINE
 
   // Idle time
-  const unsigned long sleepTime = 3000;
-  Serial.println("Me lazy, sleeping for " + String(sleepTime / 1000) + "s");
-  delay(sleepTime);
+  //const unsigned long sleepTime = 3000;
+  //Serial.println("Me lazy, sleeping for " + String(sleepTime / 1000) + "s");
+  //delay(sleepTime);
 }

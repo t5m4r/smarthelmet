@@ -42,12 +42,15 @@ function getBleConfig() {
 }
 
 function onRequestBluetoothDeviceButtonClick() {
-  log('Requesting any Bluetooth device...');
+  log('Scanning for T54MR-ARD peripheral or device with UART service...');
   const { serviceUuid } = getBleConfig();
-  navigator.bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: [serviceUuid]
-  })
+
+  const filters = [
+    { name: 'T5M4R-ARD', services: [serviceUuid] },
+    { services: [serviceUuid] }
+  ];
+
+  navigator.bluetooth.requestDevice({ filters })
   .then(device => {
     log('> Requested ' + (device.name || 'unnamed device') + ' (' + device.id + ')');
     device.addEventListener('gattserverdisconnected', handleDisconnection);
@@ -56,7 +59,7 @@ function onRequestBluetoothDeviceButtonClick() {
   })
   .catch(error => {
     if (error.name === 'NotFoundError') {
-      log('No device selected. Confirm the Arduino is advertising and in range.');
+      log('No device selected. Confirm the Arduino peripheral is advertising and in range.');
       return;
     }
     log('Argh! ' + error);
@@ -86,6 +89,36 @@ function onForgetBluetoothDeviceButtonClick() {
   });
 }
 
+async function logGattServerDetails(server, primaryServiceUuid) {
+  const services = await server.getPrimaryServices();
+  log('GATT Server: found ' + services.length + ' primary service(s).');
+
+  for (const service of services) {
+    const isPrimary = (service.isPrimary !== undefined) ? service.isPrimary : 'n/a';
+    const isUartService = service.uuid.toLowerCase() === primaryServiceUuid.toLowerCase();
+
+    log('Service: ' + service.uuid + ' (primary: ' + isPrimary + ')' +
+        (isUartService ? ' [UART SERVICE]' : ''));
+
+    const characteristics = await service.getCharacteristics();
+    log('  Characteristics: ' + characteristics.length);
+
+    for (const characteristic of characteristics) {
+      log('   - Characteristic: ' + characteristic.uuid);
+
+      const props = characteristic.properties;
+      const propNames = [
+        'broadcast', 'read', 'write', 'writeWithoutResponse',
+        'notify', 'indicate', 'authenticatedSignedWrites',
+        'reliableWrite', 'writableAuxiliaries'
+      ];
+
+      const enabledProps = propNames.filter(name => props[name]);
+      log('      Properties: ' + (enabledProps.length ? enabledProps.join(', ') : 'none'));
+    }
+  }
+}
+
 async function getSelectedDevice() {
   const deviceId = document.querySelector('#devicesSelect').value;
   if (!deviceId) {
@@ -110,6 +143,7 @@ async function connectSelectedBluetoothDevice() {
   }
   if (device.gatt.connected && uartTxCharacteristic) {
     activeDevice = device;
+    log('Already connected to peripheral: ' + (device.name || device.id));
     return;
   }
   isConnecting = true;
@@ -119,15 +153,30 @@ async function connectSelectedBluetoothDevice() {
     activeDevice.addEventListener('gattserverdisconnected', handleDisconnection);
     log('Connecting to ' + (device.name || device.id) + '...');
     const server = await device.gatt.connect();
+    log('  GATT server connected, discovering services...');
+    
+    // Debug: list ALL services the peripheral exposes
+    const allServices = await server.getPrimaryServices();
+    log('  Peripheral exposes ' + allServices.length + ' service(s):');
+    for (const svc of allServices) {
+      log('    - ' + svc.uuid);
+    }
+    
     if (uartRxCharacteristic) {
       uartRxCharacteristic.removeEventListener('characteristicvaluechanged', handleIncomingMessage);
     }
+    log('  Looking for service: ' + serviceUuid);
     const service = await server.getPrimaryService(serviceUuid);
+    log('  Found primary service: ' + service.uuid);
     uartRxCharacteristic = await service.getCharacteristic(rxUuid);
+    log('  Found RX characteristic: ' + uartRxCharacteristic.uuid);
     uartTxCharacteristic = await service.getCharacteristic(txUuid);
+    log('  Found TX characteristic: ' + uartTxCharacteristic.uuid);
     await uartRxCharacteristic.startNotifications();
+    log('  Notifications started on RX characteristic');
     uartRxCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingMessage);
-    log('  > Connected.');
+    log('Connected to peripheral: ' + (device.name || device.id));
+    await logGattServerDetails(server, serviceUuid);
   } finally {
     isConnecting = false;
   }

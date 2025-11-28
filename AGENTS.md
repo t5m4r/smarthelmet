@@ -24,6 +24,8 @@
 
 ## Product requirements
 
+In BT-LE terminology, the "T54MR-ARD" Arduino device is the "peripheral" and the web app is the "central".
+
 1. WEB-APP-REQ-01
   - Functional: Scan for BLE devices, with focus on the BT device called "T54MR-ARD" Arduino device as that's what this web app wants to talk to. If BT-LE association by hostname is not possible, use the service UUID to connect, see WEB-APP-REQ-02 below for how to know the service UUID for this project. 
 

@@ -72,6 +72,5 @@ void printWifiStatus() {
   const char * connectedSsid = WiFi.SSID();
   IPAddress ip = WiFi.localIP();
   const int32_t sigStrength = WiFi.RSSI();
-  Serial.println("Board is connected to WiFi: SSID " + String(connectedSsid) + ", local IP " + ip.toString() + ", and signal strength " + String(sigStrength) + "dBm");
-
+  //Serial.println("Board is connected to WiFi: SSID " + String(connectedSsid) + ", local IP " + ip.toString() + ", and signal strength " + String(sigStrength) + "dBm");
 }
