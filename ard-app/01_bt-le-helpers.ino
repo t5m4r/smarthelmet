@@ -4,7 +4,6 @@ void blePeripheralConnectHandler(BLEDevice central) {
   // central connected event handler
   Serial.print("Connected event, central: ");
   Serial.println(central.address());
-  textCharacteristic.writeValue("YOU ARE NOW CONNECTED DEAR CENTRAL! :)");
 }
 
 // Central in BLE-speak is usually the high-capacity smartphone

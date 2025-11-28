@@ -13,8 +13,9 @@ int wifiConnectionStatus = WL_IDLE_STATUS;
 
 BLEService smartHelmetService("19B10001-E8F2-537E-4F6C-D104768A1225");  // Bluetooth® Low Energy LED Service
 // Bluetooth® Low Energy LED Switch Characteristic - custom 128-bit UUID, read and writable by central
-BLEStringCharacteristic textCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite | BLENotify, 128);
-
+BLEStringCharacteristic p2aCommandCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLEWrite, 128);
+BLEStringCharacteristic p2aNavOrigin("19B10002-E8F2-537E-4F6C-D104768A1215", BLEWrite , 128);
+BLEStringCharacteristic p2aNavDestination("19B10002-E8F2-537E-4F6C-D104768A1216", BLEWrite , 128);
 // WiFiSSLClient is a Minimilist TLS client, but is difficult to use with Google APIs since it doesn't support HTTP helper functions/features.
 WiFiSSLClient wifiSslClient;
 // API hostname is actually set in 03_map_navigation.ino
@@ -41,18 +42,20 @@ void setup() {
 
   BLE.setAdvertisedService(smartHelmetService);  // add the service UUID
 
-  textCharacteristic.writeValue("UNINIT VALUE");  // set initial value for this characteristic
-  smartHelmetService.addCharacteristic(textCharacteristic);
+  p2aCommandCharacteristic.writeValue("UNINIT VALUE");  // set initial value for this characteristic
+  smartHelmetService.addCharacteristic(p2aCommandCharacteristic);
+  smartHelmetService.addCharacteristic(p2aNavOrigin);
+  smartHelmetService.addCharacteristic(p2aNavDestination);
+  
   BLE.addService(smartHelmetService);  // Add the battery service
   // assign event handlers for connected, disconnected to peripheral
   BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
   BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
 
   // Characteristic-level events can be one of BLESubscribed, BLEUnsubscribed, BLERead, BLEWritten
-  //textCharacteristic.setEventHandler(BLESubscribed, bleCharacteristicChangedHandler);
-  textCharacteristic.setEventHandler(BLEWritten, bleCharacteristicWrittenHandler);
-  textCharacteristic.setEventHandler(BLEUpdated, bleCharacteristicUpdatedHandler);
-
+  //p2aCommandCharacteristic.setEventHandler(BLESubscribed, bleCharacteristicChangedHandler);
+  //p2aCommandCharacteristic.setEventHandler(BLEWritten, bleCharacteristicWrittenHandler);
+  p2aCommandCharacteristic.setEventHandler(BLEUpdated, bleCharacteristicUpdatedHandler);
   // BT-LE init end
 
   /* Start advertising Bluetooth® Low Energy.  It will start continuously transmitting Bluetooth® Low Energy
