@@ -4,23 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>T5M4R HUD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <script src="get-devices.js"></script>
+    <style>
+      #log { max-height: 300px; overflow-y: auto; font-size: 0.85rem; }
+    </style>
 </head>
-<body>
-    <h1>T5M4R Directions App</h1>
-    <p>Chrome feature flags <a href="chrome://flags/#enable-web-bluetooth-new-permissions-backend">new permissions backend for Web Bluetooth</a> and <a href="chrome://flags/#enable-experimental-web-platform-features">Experimental Web Platform flag</a> MUST be set to ENABLED (not Default!).</p>
-<p>
-  <button id="requestBluetoothDevice">Request Bluetooth Device</button>
-</p>
-<p>
-  <select id="devicesSelect"></select>
-  <button id="forgetBluetoothDevice">Forget Bluetooth Device</button>
-</p>
-<p>
-  <button id="connectBluetoothDevice">Connect to Selected Device</button>
-  <input id="messageInput" type="text" value="PING" placeholder="Message to send">
-  <button id="sendMessage">Send Message</button>
-</p>
+<body class="bg-light">
+  <div class="container py-4">
+    <div class="row mb-3">
+      <div class="col">
+        <h1 class="h3 mb-1">T5M4R Directions App</h1>
+        <p class="small text-muted mb-2">Chrome-only Web Bluetooth central for the T5M4R-ARD helmet.</p>
+        <div class="alert alert-info small py-2 mb-0">
+          Chrome flags <a href="chrome://flags/#enable-web-bluetooth-new-permissions-backend">new permissions backend</a>
+          and <a href="chrome://flags/#enable-experimental-web-platform-features">Experimental Web Platform features</a>
+          MUST be set to ENABLED.
+        </div>
+      </div>
+    </div>
+
+    <div id="alertRegion"></div>
+
+    <div class="row">
+      <!-- Left column: Connection card -->
+      <div class="col-md-5 mb-3">
+        <div class="card" id="connectionCard">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Bluetooth Connection</span>
+            <span id="connectionStatusBadge" class="badge bg-secondary">Idle</span>
+          </div>
+          <div class="card-body">
+            <!-- Scan button -->
+            <div class="d-flex align-items-center mb-3 gap-2">
+              <button id="requestBluetoothDevice" type="button" class="btn btn-primary">
+                <span id="scanSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+                <span id="scanButtonText">Scan for Devices</span>
+              </button>
+              <span class="text-muted small">Looks for T5M4R-ARD peripheral</span>
+            </div>
+
+            <!-- Device select + Forget -->
+            <div class="mb-3">
+              <label class="form-label" for="devicesSelect">Permitted devices</label>
+              <div class="d-flex gap-2">
+                <select id="devicesSelect" class="form-select">
+                  <option value="" disabled selected>No permitted devices</option>
+                </select>
+                <button id="forgetBluetoothDevice" type="button" class="btn btn-outline-danger" disabled>Forget</button>
+              </div>
+            </div>
+
+            <!-- Connect button -->
+            <button id="connectBluetoothDevice" type="button" class="btn btn-success w-100" disabled>
+              <span id="connectSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+              <span id="connectButtonText">Connect</span>
+            </button>
+
+            <!-- Advanced BLE config (collapsed by default) -->
+            <div class="mt-3">
+              <a class="small text-muted" data-bs-toggle="collapse" href="#advancedConfig" role="button" aria-expanded="false">
+                Advanced BLE configuration...
+              </a>
+              <div class="collapse mt-2" id="advancedConfig">
+                <div class="mb-2">
+                  <label class="form-label small" for="serviceUuid">Service UUID</label>
+                  <input type="text" id="serviceUuid" class="form-control form-control-sm" placeholder="19B10001-E8F2-537E-4F6C-D104768A1225">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label small" for="txUuid">TX Characteristic UUID</label>
+                  <input type="text" id="txUuid" class="form-control form-control-sm" placeholder="19B10002-E8F2-537E-4F6C-D104768A1214">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label small" for="rxUuid">RX Characteristic UUID</label>
+                  <input type="text" id="rxUuid" class="form-control form-control-sm" placeholder="19B10002-E8F2-537E-4F6C-D104768A1214">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: Messages & Log card -->
+      <div class="col-md-7 mb-3">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Messages &amp; Live Log</span>
+            <button id="clearLog" type="button" class="btn btn-outline-secondary btn-sm">Clear Log</button>
+          </div>
+          <div class="card-body">
+            <!-- Message send form -->
+            <form class="row g-2 align-items-center mb-3" onsubmit="return false;">
+              <div class="col-sm-8">
+                <label class="visually-hidden" for="messageInput">Message</label>
+                <input id="messageInput" type="text" class="form-control" value="PING" placeholder="Message to send" disabled>
+              </div>
+              <div class="col-sm-4 d-grid">
+                <button id="sendMessage" type="button" class="btn btn-primary" disabled>Send</button>
+              </div>
+            </form>
+
+            <!-- Log output -->
+            <div id="output" class="border rounded">
+              <div id="content" class="small p-2 border-bottom bg-body-secondary">Output area</div>
+              <div id="status" class="small text-muted px-2 py-1"></div>
+              <pre id="log" class="bg-dark text-light p-2 mb-0 rounded-bottom"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script>
   var ChromeSamples = {
@@ -28,8 +123,10 @@
       var line = Array.prototype.slice.call(arguments).map(function(argument) {
         return typeof argument === 'string' ? argument : JSON.stringify(argument);
       }).join(' ');
-
       document.querySelector('#log').textContent += line + '\n';
+      // Auto-scroll to bottom
+      var logEl = document.querySelector('#log');
+      logEl.scrollTop = logEl.scrollHeight;
     },
 
     clearLog: function() {
@@ -50,13 +147,6 @@
   };
 </script>
 
-<h3>Live Output</h3>
-<div id="output" class="output">
-  <div id="content">Output area</div>
-  <div id="status"></div>
-  <pre id="log"></pre>
-</div>
-
 <script>
   log = ChromeSamples.log;
 
@@ -66,6 +156,8 @@
     } else {
       ChromeSamples.setStatus('Web Bluetooth API is not available.\n' +
           'Please make sure the "Experimental Web Platform features" flag is enabled.');
+      var alertRegion = document.querySelector('#alertRegion');
+      alertRegion.innerHTML = '<div class="alert alert-danger">Web Bluetooth API is not available. Enable the required Chrome flags.</div>';
       return false;
     }
   }
@@ -84,6 +176,7 @@
         await connectSelectedBluetoothDevice();
       } catch (error) {
         log('Argh! ' + error);
+        updateUiState();
       }
     });
     document.querySelector('#sendMessage').addEventListener('click', async function() {
@@ -93,6 +186,16 @@
         log('Argh! ' + error);
       }
     });
+    document.querySelector('#clearLog').addEventListener('click', function() {
+      ChromeSamples.clearLog();
+    });
+    document.querySelector('#devicesSelect').addEventListener('change', function() {
+      updateUiState();
+    });
   }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
+</html>

@@ -7,6 +7,96 @@ let uartRxCharacteristic = null;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 let isConnecting = false;
+let isScanning = false;
+
+function updateUiState() {
+  const devicesSelect = document.querySelector('#devicesSelect');
+  const scanButton = document.querySelector('#requestBluetoothDevice');
+  const scanSpinner = document.querySelector('#scanSpinner');
+  const scanButtonText = document.querySelector('#scanButtonText');
+  const forgetButton = document.querySelector('#forgetBluetoothDevice');
+  const connectButton = document.querySelector('#connectBluetoothDevice');
+  const connectSpinner = document.querySelector('#connectSpinner');
+  const connectButtonText = document.querySelector('#connectButtonText');
+  const messageInput = document.querySelector('#messageInput');
+  const sendButton = document.querySelector('#sendMessage');
+  const statusBadge = document.querySelector('#connectionStatusBadge');
+  const connectionCard = document.querySelector('#connectionCard');
+
+  const hasDevices = devicesSelect && devicesSelect.options.length > 0 && devicesSelect.options[0].value !== '';
+  const hasSelection = devicesSelect && devicesSelect.value && devicesSelect.value !== '';
+  const isConnected = !!(activeDevice && activeDevice.gatt && activeDevice.gatt.connected && uartTxCharacteristic);
+
+  // Scan button
+  if (scanButton) {
+    scanButton.disabled = isScanning || isConnecting;
+    scanSpinner?.classList.toggle('d-none', !isScanning);
+    if (scanButtonText) scanButtonText.textContent = isScanning ? 'Scanning...' : 'Scan for Devices';
+  }
+
+  // Devices select
+  if (devicesSelect) {
+    devicesSelect.disabled = isScanning || isConnecting;
+  }
+
+  // Forget button
+  if (forgetButton) {
+    forgetButton.disabled = !hasSelection || isScanning || isConnecting;
+  }
+
+  // Connect button
+  if (connectButton) {
+    if (isConnected) {
+      connectButton.disabled = true;
+      connectButton.classList.remove('btn-success');
+      connectButton.classList.add('btn-outline-success');
+    } else {
+      connectButton.disabled = !hasSelection || isConnecting || isScanning;
+      connectButton.classList.remove('btn-outline-success');
+      connectButton.classList.add('btn-success');
+    }
+    connectSpinner?.classList.toggle('d-none', !isConnecting);
+    if (connectButtonText) {
+      if (isConnected) {
+        connectButtonText.textContent = 'Connected';
+      } else if (isConnecting) {
+        connectButtonText.textContent = 'Connecting...';
+      } else {
+        connectButtonText.textContent = 'Connect';
+      }
+    }
+  }
+
+  // Message input and send button
+  if (messageInput) messageInput.disabled = !isConnected;
+  if (sendButton) sendButton.disabled = !isConnected;
+
+  // Status badge
+  if (statusBadge) {
+    statusBadge.className = 'badge';
+    if (isScanning) {
+      statusBadge.classList.add('bg-info');
+      statusBadge.textContent = 'Scanning...';
+    } else if (isConnecting) {
+      statusBadge.classList.add('bg-warning', 'text-dark');
+      statusBadge.textContent = 'Connecting...';
+    } else if (isConnected) {
+      statusBadge.classList.add('bg-success');
+      statusBadge.textContent = 'Connected';
+    } else if (hasDevices) {
+      statusBadge.classList.add('bg-secondary');
+      statusBadge.textContent = 'Not connected';
+    } else {
+      statusBadge.classList.add('bg-secondary');
+      statusBadge.textContent = 'Idle';
+    }
+  }
+
+  // Connection card border
+  if (connectionCard) {
+    connectionCard.classList.toggle('border-success', isConnected);
+  }
+}
 
 function populateBluetoothDevices() {
   const devicesSelect = document.querySelector('#devicesSelect');
@@ -21,10 +111,11 @@ function populateBluetoothDevices() {
       option.textContent = device.name || device.id;
       devicesSelect.appendChild(option);
     }
-    devicesSelect.disabled = devices.length === 0;
+    updateUiState();
   })
   .catch(error => {
     log('Argh! ' + error);
+    updateUiState();
   });
 }
 
@@ -42,13 +133,16 @@ function getBleConfig() {
 }
 
 function onRequestBluetoothDeviceButtonClick() {
-  log('Scanning for T54MR-ARD peripheral or device with UART service...');
+  log('Scanning for T5M4R-ARD peripheral or device with UART service...');
   const { serviceUuid } = getBleConfig();
 
   const filters = [
     { name: 'T5M4R-ARD', services: [serviceUuid] },
     { services: [serviceUuid] }
   ];
+
+  isScanning = true;
+  updateUiState();
 
   navigator.bluetooth.requestDevice({ filters })
   .then(device => {
@@ -60,9 +154,13 @@ function onRequestBluetoothDeviceButtonClick() {
   .catch(error => {
     if (error.name === 'NotFoundError') {
       log('No device selected. Confirm the Arduino peripheral is advertising and in range.');
-      return;
+    } else {
+      log('Argh! ' + error);
     }
-    log('Argh! ' + error);
+  })
+  .finally(() => {
+    isScanning = false;
+    updateUiState();
   });
 }
 
@@ -86,6 +184,7 @@ function onForgetBluetoothDeviceButtonClick() {
   })
   .catch(error => {
     log('Argh! ' + error);
+    updateUiState();
   });
 }
 
@@ -144,9 +243,11 @@ async function connectSelectedBluetoothDevice() {
   if (device.gatt.connected && uartTxCharacteristic) {
     activeDevice = device;
     log('Already connected to peripheral: ' + (device.name || device.id));
+    updateUiState();
     return;
   }
   isConnecting = true;
+  updateUiState();
   try {
     activeDevice = device;
     activeDevice.removeEventListener('gattserverdisconnected', handleDisconnection);
@@ -179,6 +280,7 @@ async function connectSelectedBluetoothDevice() {
     await logGattServerDetails(server, serviceUuid);
   } finally {
     isConnecting = false;
+    updateUiState();
   }
 }
 
@@ -219,8 +321,10 @@ function resetConnectionState() {
   activeDevice = null;
   uartTxCharacteristic = null;
   uartRxCharacteristic = null;
+  updateUiState();
 }
 
 window.onload = () => {
   populateBluetoothDevices();
+  updateUiState();
 };
