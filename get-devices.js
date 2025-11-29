@@ -392,7 +392,7 @@ function updateGeolocationCoordinates(latitude, longitude) {
   if (isTrackingGpsForOrigin) {
     const navOriginInput = document.querySelector('#navOriginInput');
     if (navOriginInput) {
-      navOriginInput.value = latitude.toFixed(6) + ', ' + longitude.toFixed(6);
+      navOriginInput.value = latitude.toFixed(6) + ',' + longitude.toFixed(6);
     }
   }
 }
