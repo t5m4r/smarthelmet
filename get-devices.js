@@ -10,6 +10,7 @@ let navDestCharacteristic = null;
 const textEncoder = new TextEncoder();
 let isConnecting = false;
 let isScanning = false;
+let geolocationWatchId = null;
 
 function updateUiState() {
   const devicesSelect = document.querySelector('#devicesSelect');
@@ -342,7 +343,6 @@ function resetConnectionState() {
 async function updateGeolocationPermissionIndicator(state) {
   const badge = document.querySelector('#geoPermissionBadge');
   if (!badge) return;
-  // reset classes then add appropriate ones
   badge.className = 'badge ms-2';
   if (state === 'granted') {
     badge.classList.add('bg-success');
@@ -362,11 +362,50 @@ async function updateGeolocationPermissionIndicator(state) {
   }
 }
 
+function updateGeolocationCoordinates(latitude, longitude) {
+  const coordsInput = document.querySelector('#geoCoordinates');
+  if (coordsInput) {
+    coordsInput.value = latitude.toFixed(6) + ', ' + longitude.toFixed(6);
+  }
+}
+
+function startGeolocationWatch() {
+  if (!navigator.geolocation) {
+    log('Geolocation API not available.');
+    return;
+  }
+
+  // Stop any existing watch
+  if (geolocationWatchId !== null) {
+    navigator.geolocation.clearWatch(geolocationWatchId);
+  }
+
+  geolocationWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      updateGeolocationCoordinates(latitude, longitude);
+      log('Geolocation updated: ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6));
+    },
+    (error) => {
+      log('Geolocation watch error: ' + error.message);
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+
 async function requeryGeolocationPermission() {
   if (!navigator.permissions) return;
   try {
     const status = await navigator.permissions.query({ name: 'geolocation' });
     updateGeolocationPermissionIndicator(status.state);
+    // Start watch if permission is granted
+    if (status.state === 'granted') {
+      startGeolocationWatch();
+    }
     return status;
   } catch (err) {
     log('Argh! ' + err);
@@ -382,6 +421,9 @@ function startPermissionPoll(maxAttempts = 6, intervalMs = 1000) {
     try {
       const status = await navigator.permissions.query({ name: 'geolocation' });
       updateGeolocationPermissionIndicator(status.state);
+      if (status.state === 'granted') {
+        startGeolocationWatch();
+      }
       if (status.state === 'granted' || status.state === 'denied' || attempts >= maxAttempts) {
         clearInterval(pollId);
       }
@@ -407,6 +449,15 @@ async function requestGeolocationPermissionOnLoad() {
       status.onchange = () => {
         log('Geolocation permission changed to ' + status.state);
         updateGeolocationPermissionIndicator(status.state);
+        if (status.state === 'granted') {
+          startGeolocationWatch();
+        } else {
+          // Stop watching if permission was revoked
+          if (geolocationWatchId !== null) {
+            navigator.geolocation.clearWatch(geolocationWatchId);
+            geolocationWatchId = null;
+          }
+        }
       };
     } catch (e) {
       // ignore if not supported
@@ -414,34 +465,35 @@ async function requestGeolocationPermissionOnLoad() {
 
     // If state is "prompt", trigger prompt and re-query after response.
     if (status.state === 'prompt') {
-      // Start a short poll as a fallback in case onchange is not fired
       const pollId = startPermissionPoll();
 
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           log('Geolocation allowed. coords: ' + pos.coords.latitude + ',' + pos.coords.longitude);
-          // Re-query to ensure Permissions API state is updated
+          updateGeolocationCoordinates(pos.coords.latitude, pos.coords.longitude);
           requeryGeolocationPermission();
           if (pollId) clearInterval(pollId);
         },
         (err) => {
           log('Geolocation error: ' + err.message);
-          // Re-query to ensure Permissions API state is updated
           requeryGeolocationPermission();
           if (pollId) clearInterval(pollId);
         },
         { timeout: 10000 }
       );
+    } else if (status.state === 'granted') {
+      // If already granted, start watching immediately
+      startGeolocationWatch();
     }
 
-    // Re-check when page becomes visible (user may change permission via UI)
+    // Re-check when page becomes visible
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         requeryGeolocationPermission();
       }
     });
 
-    // Also re-check on window focus as another fallback
+    // Re-check on window focus
     window.addEventListener('focus', () => {
       requeryGeolocationPermission();
     });
