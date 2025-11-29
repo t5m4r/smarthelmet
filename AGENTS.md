@@ -24,16 +24,45 @@
 
 ## Product requirements
 
-In BT-LE terminology, the "T54MR-ARD" Arduino device is the "peripheral" and the web app is the "central".
+In BT-LE terminology, the **T5M4R-ARD** Arduino device is the *peripheral* and the web app is the *central*.
 
-1. WEB-APP-REQ-01
-  - Functional: Scan for BLE devices, with focus on the BT device called "T54MR-ARD" Arduino device as that's what this web app wants to talk to. If BT-LE association by hostname is not possible, use the service UUID to connect, see WEB-APP-REQ-02 below for how to know the service UUID for this project. 
+### WEB-APP-REQ-01 – Scan for BLE devices ✅
+- Scan for BLE devices, focusing on "T5M4R-ARD" device name + service UUID
+- **Status**: Implemented. Uses `requestDevice({ filters })` with name + service UUID filters
 
-2. WEB-APP-REQ-02
-  - Connect using the GATT-related Web Bluetooth API classes to connect to the service UUID hard-coded in `ard-app.ino`, and hence copied to `index.html` or `get-devices.js` (wherever appropriate).
+### WEB-APP-REQ-02 – GATT connection ✅
+- Connect using Web Bluetooth GATT API to the service UUID from `ard-app.ino`
+- **Status**: Implemented. Discovers 3 write-only characteristics: Command, NavOrigin, NavDestination
 
-3. WEB-APP-REQ-03
-  * List the service-related metadata, and characteristic(s) associated with the service after service discovery and/or connection establishment. These should be logged to the `log` div in the `index.html` file. Enumerate all properties and characteristics that the Bluetooth Web API allows as per the [Mozilla Developer Network docs](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API)
+### WEB-APP-REQ-03 – Log service metadata ✅
+- List service metadata and characteristics after connection, log to `#log` div
+- **Status**: Implemented. `logGattServerDetails()` enumerates all services, characteristics, and properties
 
-4. WEB-APP-REQ-04
-  - Use Bootstrap v.53 CSS and JS to make buttons and other UI elements look nice and state transitions be reflected in the control enablement/disablement or perhaps a progress bar: https://getbootstrap.com/docs/5.3/getting-started/introduction/
+### WEB-APP-REQ-04 – Bootstrap 5.3 UI ✅
+- Use Bootstrap 5.3 for styling, button states, progress indicators
+- **Status**: Implemented. Cards, badges, spinners, `updateUiState()` for enable/disable states
+
+### WEB-APP-REQ-05 – Manage permitted devices ✅ (new)
+- Display/select previously-permitted devices, support forgetting devices
+- **Status**: Implemented. `populateBluetoothDevices()`, device dropdown, Forget button
+
+### WEB-APP-REQ-06 – Command transmission ✅ (new)
+- Send command strings via write-only Command characteristic
+- **Status**: Implemented. Command input + Send button, writes to `commandCharacteristic`
+
+### WEB-APP-REQ-07 – Navigation origin/destination ✅ (new)
+- Send navigation origin/destination via dedicated characteristics
+- **Status**: Implemented. Origin/Destination inputs, `onSendNavigationButtonClick()`
+
+### WEB-APP-REQ-08 – Advanced BLE config ✅ (new)
+- Allow Service UUID override for testing/firmware variants
+- **Status**: Implemented. Collapsible "Advanced BLE configuration" section
+
+### WEB-APP-REQ-09 – Chrome flags guidance ✅ (new)
+- Display Web Bluetooth availability check and Chrome flag URLs (mobile-friendly)
+- **Status**: Implemented. Copyable `<code>` blocks for flag URLs
+
+### Not implemented
+- **Notifications/Read**: Removed (characteristics are write-only per Arduino design)
+- **Auto-reconnection**: User must manually reconnect after disconnect
+- **Response handling**: No acknowledgement from peripheral at Web Bluetooth layer
