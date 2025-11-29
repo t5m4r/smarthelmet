@@ -11,6 +11,7 @@ const textEncoder = new TextEncoder();
 let isConnecting = false;
 let isScanning = false;
 let geolocationWatchId = null;
+let isTrackingGpsForOrigin = false;
 
 function updateUiState() {
   const devicesSelect = document.querySelector('#devicesSelect');
@@ -28,6 +29,7 @@ function updateUiState() {
   const sendNavButton = document.querySelector('#sendNavigation');
   const statusBadge = document.querySelector('#connectionStatusBadge');
   const connectionCard = document.querySelector('#connectionCard');
+  const trackGpsToggle = document.querySelector('#trackGpsToggle');
 
   const hasDevices = devicesSelect && devicesSelect.options.length > 0 && devicesSelect.options[0].value !== '';
   const hasSelection = devicesSelect && devicesSelect.value && devicesSelect.value !== '';
@@ -106,6 +108,14 @@ function updateUiState() {
   // Connection card border
   if (connectionCard) {
     connectionCard.classList.toggle('border-success', isConnected);
+  }
+
+  // Track GPS toggle: enable if geolocation permission is granted
+  if (trackGpsToggle) {
+    // Check if geolocation is available and permission might be granted
+    const geoPermissionBadge = document.querySelector('#geoPermissionBadge');
+    const isGeoGranted = geoPermissionBadge && geoPermissionBadge.textContent === 'Granted';
+    trackGpsToggle.disabled = !isGeoGranted;
   }
 }
 
@@ -360,6 +370,8 @@ async function updateGeolocationPermissionIndicator(state) {
     badge.classList.add('bg-secondary');
     badge.textContent = state || 'Unknown';
   }
+  
+  updateUiState();
 }
 
 function updateGeolocationCoordinates(latitude, longitude) {
@@ -374,6 +386,14 @@ function updateGeolocationCoordinates(latitude, longitude) {
     const encodedCoords = encodeURIComponent(latitude.toFixed(6) + ',' + longitude.toFixed(6));
     mapsLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodedCoords;
     mapsLink.style.display = 'inline-block';
+  }
+
+  // Auto-update Origin field if tracking is enabled
+  if (isTrackingGpsForOrigin) {
+    const navOriginInput = document.querySelector('#navOriginInput');
+    if (navOriginInput) {
+      navOriginInput.value = latitude.toFixed(6) + ', ' + longitude.toFixed(6);
+    }
   }
 }
 
@@ -515,4 +535,22 @@ window.onload = () => {
   requestGeolocationPermissionOnLoad();
   populateBluetoothDevices();
   updateUiState();
+
+  // Setup GPS tracking toggle
+  const trackGpsToggle = document.querySelector('#trackGpsToggle');
+  if (trackGpsToggle) {
+    trackGpsToggle.addEventListener('change', function() {
+      isTrackingGpsForOrigin = this.checked;
+      const navOriginInput = document.querySelector('#navOriginInput');
+      
+      if (isTrackingGpsForOrigin) {
+        log('GPS tracking for Origin enabled.');
+        navOriginInput.setAttribute('readonly', 'readonly');
+      } else {
+        log('GPS tracking for Origin disabled.');
+        navOriginInput.value = '';
+        navOriginInput.removeAttribute('readonly');
+      }
+    });
+  }
 };
