@@ -24,6 +24,7 @@ extern const char kHostname[];
 long previousMillis = 0;  // last time the repeat work was done
 int current_step = 0;
 
+bool doHttpWork = false;
 
 void setup() {
   //Initialize serial and wait for port to open:
@@ -42,7 +43,10 @@ void setup() {
 
   BLE.setAdvertisedService(smartHelmetService);  // add the service UUID
 
-  p2aCommandCharacteristic.writeValue("UNINIT VALUE");  // set initial value for this characteristic
+  p2aCommandCharacteristic.writeValue("UNINITIALIZED");  // set initial value for this characteristic
+  p2aNavOrigin.writeValue("UNINITIALIZED");
+  p2aNavDestination.writeValue("UNINITIALIZED");
+
   smartHelmetService.addCharacteristic(p2aCommandCharacteristic);
   smartHelmetService.addCharacteristic(p2aNavOrigin);
   smartHelmetService.addCharacteristic(p2aNavDestination);
@@ -119,12 +123,13 @@ void loop() {
   // Add real work below this line
 
   int err = 0;
-  bool doHttpWork = false;
 
   if (doHttpWork) {
     // This is the official project's ArduinoHttpClient library from the Library Manager
-    HttpClient httpsClient = HttpClient(wifiSslClient, kHostname, HttpClient::kHttpsPort);
-    err = httpsClient.get(buildGoogleNavigationUrlPath("560102", "560103", googleMapsApiKey));
+    HttpClient httpsClient = HttpClient(wifiSslClient, kHostname, HttpClient::kHttpsPort); 
+    const String origin = p2aNavOrigin.value();
+    const String destination = p2aNavDestination.value();
+    err = httpsClient.get(buildGoogleNavigationUrlPath(origin, destination, googleMapsApiKey));
     if (err == 0) {
       int httpResponseCode = httpsClient.responseStatusCode();
       if (httpResponseCode >= 0) {
@@ -178,8 +183,10 @@ void loop() {
         JsonArray steps = jsonDoc["routes"][0]["legs"][0]["steps"];
         Serial.println("Number of steps is: " + String(steps.size()));
         if (current_step >= steps.size()) {
-          Serial.println("Reseting step counter to first. ");
+          doHttpWork = false;
+          Serial.println("All steps traversed, stopping more HTTP navigation");
           current_step = 0;
+          return;
         }
         Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
         Serial.println(steps[current_step]["html_instructions"].as<const char*>());

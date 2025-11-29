@@ -27,6 +27,7 @@ void p2aOriginOrDestinationUpdatedHandler(BLEDevice device, BLECharacteristic ch
     Serial.print("Navigation ORIGIN received: ");
   } else if (characteristic.uuid() == "19B10002-E8F2-537E-4F6C-D104768A1216") {
     Serial.print("Navigation DESTINATION received: ");
+    doHttpWork = true; //Assume that origin data has arrived in a previous invocation of this handler, hence okay to start Nav Api
   } else {
     Serial.print("WARNING - THIS HANDLER DOES NOT HOW TO HANDLE THIS CHARACTERISTIC!");
   }
