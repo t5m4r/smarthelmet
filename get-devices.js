@@ -339,7 +339,120 @@ function resetConnectionState() {
   updateUiState();
 }
 
+async function updateGeolocationPermissionIndicator(state) {
+  const badge = document.querySelector('#geoPermissionBadge');
+  if (!badge) return;
+  // reset classes then add appropriate ones
+  badge.className = 'badge ms-2';
+  if (state === 'granted') {
+    badge.classList.add('bg-success');
+    badge.textContent = 'Granted';
+  } else if (state === 'prompt') {
+    badge.classList.add('bg-warning', 'text-dark');
+    badge.textContent = 'Prompt';
+  } else if (state === 'denied') {
+    badge.classList.add('bg-danger');
+    badge.textContent = 'Denied';
+  } else if (state === 'unavailable' || state === 'unknown') {
+    badge.classList.add('bg-secondary');
+    badge.textContent = 'Unavailable';
+  } else {
+    badge.classList.add('bg-secondary');
+    badge.textContent = state || 'Unknown';
+  }
+}
+
+async function requeryGeolocationPermission() {
+  if (!navigator.permissions) return;
+  try {
+    const status = await navigator.permissions.query({ name: 'geolocation' });
+    updateGeolocationPermissionIndicator(status.state);
+    return status;
+  } catch (err) {
+    log('Argh! ' + err);
+    updateGeolocationPermissionIndicator('unknown');
+  }
+}
+
+function startPermissionPoll(maxAttempts = 6, intervalMs = 1000) {
+  if (!navigator.permissions) return;
+  let attempts = 0;
+  const pollId = setInterval(async () => {
+    attempts++;
+    try {
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      updateGeolocationPermissionIndicator(status.state);
+      if (status.state === 'granted' || status.state === 'denied' || attempts >= maxAttempts) {
+        clearInterval(pollId);
+      }
+    } catch (e) {
+      clearInterval(pollId);
+    }
+  }, intervalMs);
+  return pollId;
+}
+
+async function requestGeolocationPermissionOnLoad() {
+  if (!navigator.permissions || !navigator.geolocation) {
+    log('Geolocation or Permissions API not available in this browser.');
+    await updateGeolocationPermissionIndicator('unavailable');
+    return;
+  }
+  try {
+    const status = await navigator.permissions.query({ name: 'geolocation' });
+    updateGeolocationPermissionIndicator(status.state);
+
+    // Attach onchange where supported
+    try {
+      status.onchange = () => {
+        log('Geolocation permission changed to ' + status.state);
+        updateGeolocationPermissionIndicator(status.state);
+      };
+    } catch (e) {
+      // ignore if not supported
+    }
+
+    // If state is "prompt", trigger prompt and re-query after response.
+    if (status.state === 'prompt') {
+      // Start a short poll as a fallback in case onchange is not fired
+      const pollId = startPermissionPoll();
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          log('Geolocation allowed. coords: ' + pos.coords.latitude + ',' + pos.coords.longitude);
+          // Re-query to ensure Permissions API state is updated
+          requeryGeolocationPermission();
+          if (pollId) clearInterval(pollId);
+        },
+        (err) => {
+          log('Geolocation error: ' + err.message);
+          // Re-query to ensure Permissions API state is updated
+          requeryGeolocationPermission();
+          if (pollId) clearInterval(pollId);
+        },
+        { timeout: 10000 }
+      );
+    }
+
+    // Re-check when page becomes visible (user may change permission via UI)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        requeryGeolocationPermission();
+      }
+    });
+
+    // Also re-check on window focus as another fallback
+    window.addEventListener('focus', () => {
+      requeryGeolocationPermission();
+    });
+  } catch (error) {
+    log('Argh! ' + error);
+    updateGeolocationPermissionIndicator('unknown');
+  }
+}
+
 window.onload = () => {
+  requestGeolocationPermissionOnLoad();
   populateBluetoothDevices();
   updateUiState();
 };
