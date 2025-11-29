@@ -367,6 +367,14 @@ function updateGeolocationCoordinates(latitude, longitude) {
   if (coordsInput) {
     coordsInput.value = latitude.toFixed(6) + ', ' + longitude.toFixed(6);
   }
+
+  // Update Google Maps link
+  const mapsLink = document.querySelector('#geoMapsLink');
+  if (mapsLink) {
+    const encodedCoords = encodeURIComponent(latitude.toFixed(6) + ',' + longitude.toFixed(6));
+    mapsLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodedCoords;
+    mapsLink.style.display = 'inline-block';
+  }
 }
 
 function startGeolocationWatch() {
