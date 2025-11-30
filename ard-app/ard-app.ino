@@ -4,7 +4,11 @@
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
 #include <ArduinoBLE.h>
-
+#include "OLED_1in51/OLED_Driver.h" //fine
+#include "OLED_1in51/GUI_paint.h"
+#include "OLED_1in51/DEV_Config.h"
+#include "OLED_1in51/Debug.h"
+#include "OLED_1in51/ImageData.h"
 // local header file for secrets stashing; keep this last in the header list
 #include "arduino_secrets.h"
 #include "configurations.h"
@@ -97,6 +101,7 @@ void setup() {
   if (wifiConnectionStatus == WL_CONNECTED) {
     printWifiStatus();
   }
+  oled_setup();
 }
 
 void loop() {
@@ -182,14 +187,17 @@ void loop() {
         // Processing of JSON document from HTTP API response
         JsonArray steps = jsonDoc["routes"][0]["legs"][0]["steps"];
         Serial.println("Number of steps is: " + String(steps.size()));
-        if (current_step >= steps.size()) {
+        if (current_step >= 2) {
           doHttpWork = false;
-          Serial.println("All steps traversed, stopping more HTTP navigation");
+          //Serial.println("All steps traversed, stopping more HTTP navigation");
           current_step = 0;
           return;
         }
-        Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
-        Serial.println(steps[current_step]["html_instructions"].as<const char*>());
+        Serial.print("STEP " + String(current_step +1) + " -> HTML instruction ");
+        const char* html_step = steps[current_step]["html_instructions"].as<const char*>();
+        const char* instructions_text = stripHtmlTags(html_step).c_str();
+        Serial.println(instructions_text);
+        draw_step(instructions_text);
         if (steps[current_step]["maneuver"].is<String>()) {
           const char* maneuver = steps[current_step]["maneuver"];
           String distance = steps[current_step]["distance"]["text"];
@@ -215,4 +223,4 @@ void loop() {
   //const unsigned long sleepTime = 3000;
   //Serial.println("Me lazy, sleeping for " + String(sleepTime / 1000) + "s");
   //delay(sleepTime);
-}
+}
