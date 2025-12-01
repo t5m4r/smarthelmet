@@ -159,7 +159,9 @@ void loop() {
         // Whilst we haven't timed out & haven't reached the end of the body
         while ((httpsClient.connected() || httpsClient.available()) && (!httpsClient.endOfBodyReached()) && ((millis() - timeoutStart) < kNetworkTimeout)) {
           if (httpsClient.available()) {
-            DeserializationError error = deserializeJson(jsonDoc, httpsClient);
+            JsonDocument filter;
+            filter["routes"][0]["legs"][0]["steps"] = true;
+            DeserializationError error = deserializeJson(jsonDoc, httpsClient, DeserializationOption::Filter(filter));
             switch (error.code()) {
               case DeserializationError::Ok:
                 Serial.println(String("Deserialization of JSON succeeded. "));
@@ -170,6 +172,8 @@ void loop() {
                 break;
               case DeserializationError::InvalidInput:
               case DeserializationError::NoMemory:
+                Serial.print("Deserializarion error: ");
+                Serial.println(error.code());
               default:
                 Serial.println("Deserialization failed! " + error.code());
                 httpsClient.stop();  // This marks as this request-request pair as successfully done, and effectively helps us break out from the while() loop above.
@@ -187,17 +191,18 @@ void loop() {
         // Processing of JSON document from HTTP API response
         JsonArray steps = jsonDoc["routes"][0]["legs"][0]["steps"];
         Serial.println("Number of steps is: " + String(steps.size()));
-        if (current_step >= 2) {
+        if (current_step >= steps.size()) {
           doHttpWork = false;
           //Serial.println("All steps traversed, stopping more HTTP navigation");
           current_step = 0;
           return;
         }
-        Serial.print("STEP " + String(current_step +1) + " -> HTML instruction ");
+        Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
         const char* html_step = steps[current_step]["html_instructions"].as<const char*>();
         const char* instructions_text = stripHtmlTags(html_step).c_str();
         Serial.println(instructions_text);
         draw_step(instructions_text);
+
         if (steps[current_step]["maneuver"].is<String>()) {
           const char* maneuver = steps[current_step]["maneuver"];
           String distance = steps[current_step]["distance"]["text"];
