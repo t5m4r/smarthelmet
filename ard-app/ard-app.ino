@@ -153,14 +153,16 @@ void loop() {
         int bodyLen = httpsClient.contentLength();
         Serial.println("HTTP response's content length is: " + String(bodyLen) + " bytes");
 
-        // Now we've got to the HTTP response body, so we can feed it to a JSON processor/parser.
         JsonDocument jsonDoc;
         unsigned long timeoutStart = millis();
         // Whilst we haven't timed out & haven't reached the end of the body
         while ((httpsClient.connected() || httpsClient.available()) && (!httpsClient.endOfBodyReached()) && ((millis() - timeoutStart) < kNetworkTimeout)) {
           if (httpsClient.available()) {
             JsonDocument filter;
-            filter["routes"][0]["legs"][0]["steps"] = true;
+            JsonObject filter_routes_0_legs_0_steps_0 = filter["routes"][0]["legs"][0]["steps"].add<JsonObject>();
+            filter_routes_0_legs_0_steps_0["html_instructions"] = true;
+            filter_routes_0_legs_0_steps_0["maneuver"] = true;
+            // Now we've got to the HTTP response body, so we can feed it to a JSON processor/parser.
             DeserializationError error = deserializeJson(jsonDoc, httpsClient, DeserializationOption::Filter(filter));
             switch (error.code()) {
               case DeserializationError::Ok:
@@ -189,30 +191,28 @@ void loop() {
         }  // While loop for waiting for, plus reading the response of a single API request/response
 
         // Processing of JSON document from HTTP API response
-        JsonArray steps = jsonDoc["routes"][0]["legs"][0]["steps"];
-        Serial.println("Number of steps is: " + String(steps.size()));
-        if (current_step >= steps.size()) {
+        JsonArray navSteps = jsonDoc["routes"][0]["legs"][0]["steps"];
+        Serial.println("Number of steps is: " + String(navSteps.size()));
+        if (current_step >= navSteps.size()) {
           doHttpWork = false;
           //Serial.println("All steps traversed, stopping more HTTP navigation");
           current_step = 0;
           return;
         }
         Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
-        const char* html_step = steps[current_step]["html_instructions"].as<const char*>();
+        const char* html_step = navSteps[current_step]["html_instructions"].as<const char*>();
         const char* instructions_text = stripHtmlTags(html_step).c_str();
         Serial.println(instructions_text);
         draw_step(instructions_text);
 
-        if (steps[current_step]["maneuver"].is<String>()) {
-          const char* maneuver = steps[current_step]["maneuver"];
-          String distance = steps[current_step]["distance"]["text"];
+        if (navSteps[current_step]["maneuver"].is<String>()) {
+          const char* maneuver = navSteps[current_step]["maneuver"];
           Serial.print("STEP " + String(current_step) + " -> Maneuver ");
-          Serial.print(maneuver);
-          Serial.print(" in ");
-          Serial.println(distance);
+          Serial.println(maneuver);
         }
         current_step++;
-
+        navSteps.clear();
+        jsonDoc.clear();
       } else {
         Serial.println("Error getting HTTP response, code " + httpResponseCode);
       }
@@ -228,4 +228,4 @@ void loop() {
   //const unsigned long sleepTime = 3000;
   //Serial.println("Me lazy, sleeping for " + String(sleepTime / 1000) + "s");
   //delay(sleepTime);
-}
+}
