@@ -33,8 +33,6 @@ bool doHttpWork = false;
 void setup() {
   //Initialize serial and wait for port to open:
   Serial.begin(115200);  // Let it rip
-  while (!Serial)
-    ;
 
   // BT-LE init
   if (!BLE.begin()) {
