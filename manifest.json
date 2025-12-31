@@ -1,9 +1,9 @@
 {
-  "id": "/index.html",
+  "id": ".",
   "name": "HeadSense Smart Helmet",
   "short_name": "HeadSense",
   "description": "Tushar's Smart Helmet for bike-riding delivery workers",
-  "start_url": "/index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#f8f9fa",
   "theme_color": "#0d6efd",

@@ -1,14 +1,14 @@
 // HeadSense Service Worker
 // Required for PWA installability on Chrome for Android
 
-const CACHE_NAME = 'headsense-v1';
+const CACHE_NAME = 'headsense-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/get-devices.js',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  './',
+  './index.html',
+  './get-devices.js',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 // Install event - cache core assets
