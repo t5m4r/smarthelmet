@@ -62,7 +62,11 @@ In BT-LE terminology, the **T5M4R-ARD** Arduino device is the *peripheral* and t
 - Display Web Bluetooth availability check and Chrome flag URLs (mobile-friendly)
 - **Status**: Implemented. Copyable `<code>` blocks for flag URLs
 
+### WEB-APP-REQ-10 - Chrome for Android installability as a Web App/PWA ✅
+- Implement Chrome for Android installability as a Web App/PWA, ask the developers questions about data fields and feature flags while implementing: https://web.dev/articles/install-criteria
+- Configure hooks such as `beforeinstallprompt` so that in-browser visitor can be prompted to install the app: https://web.dev/articles/codelab-make-installable
+- **Status**: Implemented. `manifest.json` with required fields, `sw.js` service worker, `beforeinstallprompt` handler with "Install App" button
+
 ### Not implemented
-- **Notifications/Read**: Removed (characteristics are write-only per Arduino design)
 - **Auto-reconnection**: User must manually reconnect after disconnect
 - **Response handling**: No acknowledgement from peripheral at Web Bluetooth layer

@@ -3,6 +3,13 @@ const DEFAULT_COMMAND_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A121
 const DEFAULT_NAV_ORIGIN_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A1215';
 const DEFAULT_NAV_DEST_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A1216';
 
+// Geolocation configuration for navigation use case
+const GEOLOCATION_OPTIONS = {
+  enableHighAccuracy: true,  // Prefer GPS for higher accuracy in navigation
+  timeout: 5000,             // 5 seconds max for finding a fix
+  maximumAge: 10000          // Accept location up to 10 seconds old
+};
+
 let activeDevice = null;
 let commandCharacteristic = null;
 let navOriginCharacteristic = null;
@@ -12,6 +19,7 @@ let isConnecting = false;
 let isScanning = false;
 let geolocationWatchId = null;
 let isTrackingGpsForOrigin = false;
+let lastProcessedGeoTimestamp = 0;  // Track last processed position to avoid duplicates
 
 function updateUiState() {
   const devicesSelect = document.querySelector('#devicesSelect');
@@ -410,18 +418,29 @@ function startGeolocationWatch() {
 
   geolocationWatchId = navigator.geolocation.watchPosition(
     (position) => {
+      // Mobile Chrome queues geolocation events when app is backgrounded.
+      // Filter out stale/duplicate positions using timestamp.
+      if (position.timestamp <= lastProcessedGeoTimestamp) {
+        return; // Skip: already processed this or newer position
+      }
+      
       const { latitude, longitude } = position.coords;
+      const ageMilliseconds = (Date.now() - position.timestamp);
+      
+      // Skip positions that are too stale (older than maximumAge + 5s grace period)
+      if (ageMilliseconds > GEOLOCATION_OPTIONS.maximumAge + 5000) {
+        log('Skipping stale geolocation fix (' + ageMilliseconds + 'ms old)');
+        return;
+      }
+      
+      lastProcessedGeoTimestamp = position.timestamp;
       updateGeolocationCoordinates(latitude, longitude);
-      log('Geolocation updated: ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6));
+      log('Geolocation updated: ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6) + ' (' + ageMilliseconds + 'ms ago)');
     },
     (error) => {
       log('Geolocation watch error: ' + error.message);
     },
-    {
-      enableHighAccuracy: false,
-      timeout: 10000,
-      maximumAge: 0
-    }
+    GEOLOCATION_OPTIONS
   );
 }
 
@@ -507,7 +526,7 @@ async function requestGeolocationPermissionOnLoad() {
           requeryGeolocationPermission();
           if (pollId) clearInterval(pollId);
         },
-        { timeout: 10000 }
+        GEOLOCATION_OPTIONS
       );
     } else if (status.state === 'granted') {
       // If already granted, start watching immediately
@@ -515,15 +534,28 @@ async function requestGeolocationPermissionOnLoad() {
     }
 
     // Re-check when page becomes visible
+    // Also restart watch to clear queued events from Chrome mobile battery management
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         requeryGeolocationPermission();
+        // Restart watch to avoid burst of queued geolocation events on mobile
+        if (geolocationWatchId !== null) {
+          navigator.geolocation.clearWatch(geolocationWatchId);
+          geolocationWatchId = null;
+          startGeolocationWatch();
+        }
       }
     });
 
     // Re-check on window focus
+    // Also restart watch to avoid burst of queued events
     window.addEventListener('focus', () => {
       requeryGeolocationPermission();
+      if (geolocationWatchId !== null) {
+        navigator.geolocation.clearWatch(geolocationWatchId);
+        geolocationWatchId = null;
+        startGeolocationWatch();
+      }
     });
   } catch (error) {
     log('Argh! ' + error);
