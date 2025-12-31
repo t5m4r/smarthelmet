@@ -7,7 +7,7 @@ const DEFAULT_NAV_DEST_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A12
 const GEOLOCATION_OPTIONS = {
   enableHighAccuracy: true,  // Prefer GPS for higher accuracy in navigation
   timeout: 5000,             // 5 seconds max for finding a fix
-  maximumAge: 10000          // Accept location up to 10 seconds old
+  maximumAge: 30000          // Accept location up to 30 seconds old
 };
 
 let activeDevice = null;
@@ -427,8 +427,8 @@ function startGeolocationWatch() {
       const { latitude, longitude } = position.coords;
       const ageMilliseconds = (Date.now() - position.timestamp);
       
-      // Skip positions that are too stale (older than maximumAge + 5s grace period)
-      if (ageMilliseconds > GEOLOCATION_OPTIONS.maximumAge + 5000) {
+      // Skip positions that are too stale (older than maximumAge + 10s grace period)
+      if (ageMilliseconds > GEOLOCATION_OPTIONS.maximumAge + 10000) {
         log('Skipping stale geolocation fix (' + ageMilliseconds + 'ms old)');
         return;
       }
