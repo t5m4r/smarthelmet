@@ -33,21 +33,33 @@
           </button>
         </div>
         <p class="small text-muted mb-2">Chrome-only Web Bluetooth central for the T5M4R-ARD helmet.</p>
-        <div class="alert alert-info small py-2 mb-0">
-          <p class="mb-2">Enable these Chrome flags (copy &amp; paste into address bar):</p>
-          <div class="mb-2">
-            <span class="small">Geolocation permission:</span>
-            <span id="geoPermissionBadge" class="badge bg-secondary ms-2">Checking...</span>
-            <input type="text" id="geoCoordinates" class="form-control form-control-sm d-inline-block ms-2" style="width: 220px;" placeholder="Lat, Lng" readonly>
-            <a id="geoMapsLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary ms-1" style="display: none;" title="Open in Google Maps">
-              <span>🗺️</span>
-            </a>
-          </div>
-          <div class="mb-1">
-            <code class="user-select-all bg-white px-2 py-1 rounded d-inline-block">chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>
-          </div>
-          <div>
-            <code class="user-select-all bg-white px-2 py-1 rounded d-inline-block">chrome://flags/#enable-experimental-web-platform-features</code>
+        <div class="d-flex align-items-center small mb-0">
+          <span class="text-muted">Location:</span>
+          <span id="geoPermissionBadge" class="badge bg-secondary ms-2">Checking...</span>
+          <input type="text" id="geoCoordinates" class="form-control form-control-sm d-inline-block ms-2" style="width: 200px;" placeholder="Lat, Lng" readonly>
+          <a id="geoMapsLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary ms-1" style="display: none;" title="Open in Google Maps">
+            <span>🗺️</span>
+          </a>
+          <button id="showChromeHelpBtn" type="button" class="btn btn-sm btn-link text-muted ms-auto p-0" title="Chrome setup help">
+            ❓
+          </button>
+        </div>
+
+        <!-- Chrome flags help overlay -->
+        <div id="chromeFlagsOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+          <div class="position-absolute top-50 start-50 translate-middle bg-white rounded shadow p-4" style="max-width: 500px; width: 90%;">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h5 class="mb-0">Chrome Setup</h5>
+              <button id="closeChromeHelpBtn" type="button" class="btn-close" aria-label="Close"></button>
+            </div>
+            <p class="small text-muted mb-2">Enable these Chrome flags (copy &amp; paste into address bar):</p>
+            <div class="mb-2">
+              <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>
+            </div>
+            <div class="mb-3">
+              <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-experimental-web-platform-features</code>
+            </div>
+            <button id="dismissChromeHelpBtn" type="button" class="btn btn-primary btn-sm">Got it</button>
           </div>
         </div>
       </div>
@@ -297,6 +309,27 @@
       }
     });
   }
+
+  // Chrome flags help overlay handlers
+  const chromeFlagsOverlay = document.getElementById('chromeFlagsOverlay');
+  const showChromeHelpBtn = document.getElementById('showChromeHelpBtn');
+  const closeChromeHelpBtn = document.getElementById('closeChromeHelpBtn');
+  const dismissChromeHelpBtn = document.getElementById('dismissChromeHelpBtn');
+
+  function showChromeHelp() {
+    chromeFlagsOverlay.classList.remove('d-none');
+  }
+
+  function hideChromeHelp() {
+    chromeFlagsOverlay.classList.add('d-none');
+  }
+
+  showChromeHelpBtn.addEventListener('click', showChromeHelp);
+  closeChromeHelpBtn.addEventListener('click', hideChromeHelp);
+  dismissChromeHelpBtn.addEventListener('click', hideChromeHelp);
+  chromeFlagsOverlay.addEventListener('click', (e) => {
+    if (e.target === chromeFlagsOverlay) hideChromeHelp();
+  });
 </script>
 </body>
 </html>
