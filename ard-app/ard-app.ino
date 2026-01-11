@@ -12,6 +12,7 @@
 // local header file for secrets stashing; keep this last in the header list
 #include "arduino_secrets.h"
 #include "configurations.h"
+#include "navigation.h"
 
 int wifiConnectionStatus = WL_IDLE_STATUS;
 
@@ -29,6 +30,8 @@ long previousMillis = 0;  // last time the repeat work was done
 int current_step = 0;
 
 bool doHttpWork = false;
+
+extern UBYTE *BlackImage;  // From OLED_1in51.ino
 
 void setup() {
   //Initialize serial and wait for port to open:
@@ -197,16 +200,19 @@ void loop() {
           current_step = 0;
           return;
         }
-        Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
-        const char* html_step = navSteps[current_step]["html_instructions"].as<const char*>();
-        const char* instructions_text = stripHtmlTags(html_step).c_str();
-        Serial.println(instructions_text);
-        draw_step(instructions_text);
+        //Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
+        //const char* html_step = navSteps[current_step]["html_instructions"].as<const char*>();
+        //const char* instructions_text = stripHtmlTags(html_step).c_str();
+        //Serial.println(instructions_text);
+        
 
         if (navSteps[current_step]["maneuver"].is<String>()) {
           const char* maneuver = navSteps[current_step]["maneuver"];
           Serial.print("STEP " + String(current_step) + " -> Maneuver ");
           Serial.println(maneuver);
+          NavInstruction nav = parseNavInstruction(maneuver);
+          drawNavInstruction(nav, BlackImage);
+          OLED_1IN51_Display(BlackImage);
         }
         current_step++;
         navSteps.clear();
