@@ -2,28 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>T5M4R HUD</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>HeadSense Smart Helmet</title>
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Chrome-only Web Bluetooth app for the T5M4R-ARD smart helmet peripheral">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="HeadSense">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <!-- PWA Manifest - temporarily disabled for debugging -->
+    <!-- <link rel="manifest" href="manifest.json"> -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <script src="get-devices.js"></script>
     <style>
       #log { max-height: 300px; overflow-y: auto; font-size: 0.85rem; }
+      #installButton { display: none; }
+      #installButton.show { display: inline-block; }
+      @media (max-width: 576px) {
+        .container { padding-left: 0.75rem; padding-right: 0.75rem; }
+        .py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+        .card-body { padding: 0.75rem; }
+      }
     </style>
 </head>
 <body class="bg-light">
   <div class="container py-4">
     <div class="row mb-3">
       <div class="col">
-        <h1 class="h3 mb-1">T5M4R Directions App</h1>
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <h1 class="h3 mb-0">HeadSense User App</h1>
+          <button id="installButton" type="button" class="btn btn-outline-primary btn-sm">
+            📲 Install App
+          </button>
+        </div>
         <p class="small text-muted mb-2">Chrome-only Web Bluetooth central for the T5M4R-ARD helmet.</p>
-        <div class="alert alert-info small py-2 mb-0">
-          <p class="mb-2">Enable these Chrome flags (copy &amp; paste into address bar):</p>
-          <div class="mb-1">
-            <code class="user-select-all bg-white px-2 py-1 rounded d-inline-block">chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>
-          </div>
-          <div>
-            <code class="user-select-all bg-white px-2 py-1 rounded d-inline-block">chrome://flags/#enable-experimental-web-platform-features</code>
+        <div class="d-flex align-items-center small mb-0">
+          <span class="text-muted">Location:</span>
+          <span id="geoPermissionBadge" class="badge bg-secondary ms-2">Checking...</span>
+          <input type="text" id="geoCoordinates" class="form-control form-control-sm d-inline-block ms-2" style="width: 200px;" placeholder="Lat, Lng" readonly>
+          <a id="geoMapsLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary ms-1" style="display: none;" title="Open in Google Maps">
+            <span>🗺️</span>
+          </a>
+          <button id="showChromeHelpBtn" type="button" class="btn btn-sm btn-link text-muted ms-auto p-0" title="Chrome setup help">
+            ❓
+          </button>
+        </div>
+
+        <!-- Chrome flags help overlay -->
+        <div id="chromeFlagsOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+          <div class="position-absolute top-50 start-50 translate-middle bg-white rounded shadow p-4" style="max-width: 500px; width: 90%;">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h5 class="mb-0">Chrome Setup</h5>
+              <button id="closeChromeHelpBtn" type="button" class="btn-close" aria-label="Close"></button>
+            </div>
+            <p class="small text-muted mb-2">Enable these Chrome flags (copy &amp; paste into address bar):</p>
+            <div class="mb-2">
+              <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>
+            </div>
+            <div class="mb-3">
+              <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-experimental-web-platform-features</code>
+            </div>
+            <button id="dismissChromeHelpBtn" type="button" class="btn btn-primary btn-sm">Got it</button>
           </div>
         </div>
       </div>
@@ -102,6 +143,16 @@
             <!-- Navigation form -->
             <div class="mb-3 p-2 border rounded bg-body-secondary">
               <label class="form-label small fw-bold">Navigation</label>
+              <div class="row g-2 mb-2">
+                <div class="col-auto">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="trackGpsToggle" disabled>
+                    <label class="form-check-label small" for="trackGpsToggle">
+                      Track current GPS location
+                    </label>
+                  </div>
+                </div>
+              </div>
               <div class="row g-2">
                 <div class="col-sm-6">
                   <label class="form-label small" for="navOriginInput">Origin</label>
@@ -216,5 +267,74 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+<!-- PWA Install Prompt Handler -->
+<script>
+  let deferredInstallPrompt = null;
+  const installButton = document.getElementById('installButton');
+
+  // Listen for beforeinstallprompt event
+  window.addEventListener('beforeinstallprompt', (event) => {
+    console.log('[PWA] beforeinstallprompt fired');
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    installButton.classList.add('show');
+  });
+
+  // Handle install button click
+  installButton.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) {
+      console.log('[PWA] No deferred prompt available');
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    console.log('[PWA] User choice:', outcome);
+    log('Install prompt outcome: ' + outcome);
+    deferredInstallPrompt = null;
+    installButton.classList.remove('show');
+  });
+
+  // Track successful installation
+  window.addEventListener('appinstalled', (event) => {
+    console.log('[PWA] App was installed');
+    log('HeadSense app installed successfully!');
+    deferredInstallPrompt = null;
+    installButton.classList.remove('show');
+  });
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('./sw.js');
+        console.log('[PWA] Service Worker registered:', registration.scope);
+      } catch (error) {
+        console.log('[PWA] Service Worker registration failed:', error);
+      }
+    });
+  }
+
+  // Chrome flags help overlay handlers
+  const chromeFlagsOverlay = document.getElementById('chromeFlagsOverlay');
+  const showChromeHelpBtn = document.getElementById('showChromeHelpBtn');
+  const closeChromeHelpBtn = document.getElementById('closeChromeHelpBtn');
+  const dismissChromeHelpBtn = document.getElementById('dismissChromeHelpBtn');
+
+  function showChromeHelp() {
+    chromeFlagsOverlay.classList.remove('d-none');
+  }
+
+  function hideChromeHelp() {
+    chromeFlagsOverlay.classList.add('d-none');
+  }
+
+  showChromeHelpBtn.addEventListener('click', showChromeHelp);
+  closeChromeHelpBtn.addEventListener('click', hideChromeHelp);
+  dismissChromeHelpBtn.addEventListener('click', hideChromeHelp);
+  chromeFlagsOverlay.addEventListener('click', (e) => {
+    if (e.target === chromeFlagsOverlay) hideChromeHelp();
+  });
+</script>
 </body>
 </html>
