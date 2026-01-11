@@ -6,176 +6,340 @@
     <title>HeadSense Smart Helmet</title>
     <!-- PWA Meta Tags -->
     <meta name="description" content="Chrome-only Web Bluetooth app for the T5M4R-ARD smart helmet peripheral">
-    <meta name="theme-color" content="#0d6efd">
+    <meta name="theme-color" content="#198754">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="HeadSense">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <!-- PWA Manifest - temporarily disabled for debugging -->
-    <!-- <link rel="manifest" href="manifest.json"> -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <script src="get-devices.js"></script>
     <style>
-      #log { max-height: 300px; overflow-y: auto; font-size: 0.85rem; }
+      :root {
+        --hs-primary: #198754;
+        --hs-primary-dark: #146c43;
+      }
+      
+      body {
+        padding-top: 56px;
+        font-size: 16px;
+      }
+      
+      .navbar-brand {
+        font-weight: 600;
+      }
+      
+      .btn-lg, .input-group-lg .form-control {
+        min-height: 52px;
+        font-size: 1.1rem;
+      }
+      
+      .hero-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      }
+      
+      .hero-card .card-body {
+        padding: 1.25rem;
+      }
+      
+      .recent-destinations {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.5rem;
+        gap: 0.5rem;
+      }
+      
+      .recent-destinations:empty::after {
+        content: "No recent destinations";
+        color: #6c757d;
+        font-size: 0.875rem;
+      }
+      
+      .recent-dest {
+        flex: 0 0 auto;
+        max-width: 200px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      
+      .send-btn {
+        font-size: 1.25rem;
+        font-weight: 600;
+        min-height: 60px;
+        border-radius: 0.75rem;
+      }
+      
+      .bt-status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        background: #6c757d;
+        border: 2px solid rgba(255,255,255,0.5);
+      }
+      
+      .bt-status-dot.connected { 
+        background: #fff; 
+        border-color: #fff;
+        box-shadow: 0 0 6px rgba(255,255,255,0.8);
+      }
+      .bt-status-dot.connecting { 
+        background: #ffc107; 
+        border-color: #fff;
+      }
+      .bt-status-dot.disconnected { 
+        background: #6c757d; 
+        border-color: rgba(255,255,255,0.3);
+      }
+      
+      .origin-summary {
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+      }
+      
+      #log { max-height: 250px; overflow-y: auto; font-size: 0.8rem; }
       #installButton { display: none; }
       #installButton.show { display: inline-block; }
+      
       @media (max-width: 576px) {
+        body { padding-top: 52px; }
         .container { padding-left: 0.75rem; padding-right: 0.75rem; }
-        .py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-        .card-body { padding: 0.75rem; }
+        .hero-card .card-body { padding: 1rem; }
+        .send-btn { min-height: 56px; font-size: 1.1rem; }
       }
     </style>
 </head>
 <body class="bg-light">
-  <div class="container py-4">
-    <div class="row mb-3">
-      <div class="col">
-        <div class="d-flex align-items-center gap-2 mb-1">
-          <h1 class="h3 mb-0">HeadSense User App</h1>
-          <button id="installButton" type="button" class="btn btn-outline-primary btn-sm">
-            📲 Install App
-          </button>
-        </div>
-        <p class="small text-muted mb-2">Chrome-only Web Bluetooth central for the T5M4R-ARD helmet.</p>
-        <div class="d-flex align-items-center small mb-0">
-          <span class="text-muted">Location:</span>
-          <span id="geoPermissionBadge" class="badge bg-secondary ms-2">Checking...</span>
-          <input type="text" id="geoCoordinates" class="form-control form-control-sm d-inline-block ms-2" style="width: 200px;" placeholder="Lat, Lng" readonly>
-          <a id="geoMapsLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary ms-1" style="display: none;" title="Open in Google Maps">
-            <span>🗺️</span>
-          </a>
-          <button id="showChromeHelpBtn" type="button" class="btn btn-sm btn-link text-muted ms-auto p-0" title="Chrome setup help">
-            ❓
-          </button>
-        </div>
+  <!-- Fixed Top Navbar -->
+  <nav class="navbar navbar-dark fixed-top" style="background: var(--hs-primary);">
+    <div class="container-fluid">
+      <span class="navbar-brand">
+        <span aria-hidden="true">🪖</span> HeadSense
+      </span>
+      <div class="d-flex align-items-center gap-2">
+        <!-- Install button (PWA) -->
+        <button id="installButton" type="button" class="btn btn-sm btn-outline-light">
+          📲 Install
+        </button>
+        <!-- Helmet status button opens offcanvas -->
+        <button id="btStatusButton" class="btn btn-sm btn-outline-light d-flex align-items-center gap-2"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#btOffcanvas"
+                aria-controls="btOffcanvas">
+          <span>Helmet</span>
+          <span id="btStatusDot" class="bt-status-dot disconnected"></span>
+        </button>
+      </div>
+    </div>
+  </nav>
 
-        <!-- Chrome flags help overlay -->
-        <div id="chromeFlagsOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(0,0,0,0.5); z-index: 1050;">
-          <div class="position-absolute top-50 start-50 translate-middle bg-white rounded shadow p-4" style="max-width: 500px; width: 90%;">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-              <h5 class="mb-0">Chrome Setup</h5>
-              <button id="closeChromeHelpBtn" type="button" class="btn-close" aria-label="Close"></button>
+  <!-- Main Content -->
+  <main class="container py-3">
+    <div id="alertRegion"></div>
+
+    <!-- Hero: Where are you going? -->
+    <section aria-label="Navigation to destination">
+      <div class="card hero-card mb-3">
+        <div class="card-body">
+          <h1 class="h4 mb-3 text-center">Where are you going?</h1>
+
+          <!-- Destination input -->
+          <div class="mb-3">
+            <label for="navDestAutocomplete" class="form-label fw-semibold d-flex align-items-center gap-2">
+              <span aria-hidden="true">📍</span> Destination
+            </label>
+            <div class="input-group input-group-lg">
+              <input id="navDestAutocomplete"
+                     type="text"
+                     class="form-control"
+                     placeholder="Enter address or place"
+                     autocomplete="off">
+              <button id="clearDestButton"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      title="Clear destination">
+                ✕
+              </button>
             </div>
-            <p class="small text-muted mb-2">Enable these Chrome flags (copy &amp; paste into address bar):</p>
-            <div class="mb-2">
-              <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>
+            <!-- Hidden field for BLE payload -->
+            <input id="navDestInput" type="hidden">
+          </div>
+
+          <!-- Recent destinations -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="small text-muted fw-medium">Recent</span>
+              <button id="clearRecentsBtn" type="button" class="btn btn-link btn-sm p-0 text-muted small">Clear all</button>
             </div>
-            <div class="mb-3">
-              <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-experimental-web-platform-features</code>
+            <div id="recentDestinations" class="d-flex flex-row flex-nowrap recent-destinations">
+              <!-- Filled by JS -->
             </div>
-            <button id="dismissChromeHelpBtn" type="button" class="btn btn-primary btn-sm">Got it</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Origin summary (collapsed) -->
+      <div class="origin-summary mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span aria-hidden="true">📡</span>
+            <span class="small">From: <strong id="originSummaryText">Current location</strong></span>
+          </div>
+          <button class="btn btn-sm btn-link text-muted p-0"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#originPanel"
+                  aria-expanded="false"
+                  aria-controls="originPanel">
+            Change
+          </button>
+        </div>
+        <div class="collapse mt-2" id="originPanel">
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" id="trackGpsToggle" checked>
+            <label class="form-check-label small" for="trackGpsToggle">
+              Use GPS for origin
+            </label>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <input id="navOriginInput"
+                   type="text"
+                   class="form-control form-control-sm"
+                   placeholder="Lat, Lng"
+                   readonly>
+            <a id="geoMapsLink" href="#" target="_blank" rel="noopener noreferrer" 
+               class="btn btn-sm btn-outline-primary" style="display: none;" title="Open in Google Maps">
+              🗺️
+            </a>
+          </div>
+          <div class="mt-2 small">
+            <span class="text-muted">GPS:</span>
+            <span id="geoPermissionBadge" class="badge bg-secondary ms-1">Checking...</span>
+            <button id="showChromeHelpBtn" type="button" class="btn btn-link btn-sm p-0 text-muted ms-2" title="Chrome setup help">
+              ❓ Help
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary action -->
+      <div class="d-grid mb-3">
+        <button id="sendNavigation"
+                type="button"
+                class="btn btn-success send-btn"
+                disabled>
+          <span aria-hidden="true">➡️</span>
+          <span class="ms-2">Send to Helmet</span>
+        </button>
+      </div>
+
+      <!-- Status message -->
+      <p id="navStatusMessage" class="text-center small text-muted mb-0" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <!-- Offcanvas: Bluetooth & Debug -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="btOffcanvas" aria-labelledby="btOffcanvasLabel">
+    <div class="offcanvas-header">
+      <h5 id="btOffcanvasLabel">Helmet & Bluetooth</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <!-- Connection Card -->
+      <div class="card mb-3" id="connectionCard">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+          <span class="small fw-medium">Connection</span>
+          <span id="connectionStatusBadge" class="badge bg-secondary">Idle</span>
+        </div>
+        <div class="card-body py-2">
+          <!-- Scan button -->
+          <div class="d-flex align-items-center mb-2 gap-2">
+            <button id="requestBluetoothDevice" type="button" class="btn btn-primary btn-sm">
+              <span id="scanSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+              <span id="scanButtonText">Scan</span>
+            </button>
+            <span class="text-muted small">Find T5M4R-ARD</span>
+          </div>
+
+          <!-- Device select + Forget -->
+          <div class="mb-2">
+            <label class="form-label small mb-1" for="devicesSelect">Devices</label>
+            <div class="d-flex gap-2">
+              <select id="devicesSelect" class="form-select form-select-sm">
+                <option value="" disabled selected>No devices</option>
+              </select>
+              <button id="forgetBluetoothDevice" type="button" class="btn btn-outline-danger btn-sm" disabled>Forget</button>
+            </div>
+          </div>
+
+          <!-- Connect button -->
+          <button id="connectBluetoothDevice" type="button" class="btn btn-success btn-sm w-100" disabled>
+            <span id="connectSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+            <span id="connectButtonText">Connect</span>
+          </button>
+
+          <!-- Advanced BLE config -->
+          <div class="mt-2">
+            <a class="small text-muted" data-bs-toggle="collapse" href="#advancedConfig" role="button" aria-expanded="false">
+              Advanced...
+            </a>
+            <div class="collapse mt-2" id="advancedConfig">
+              <label class="form-label small mb-1" for="serviceUuid">Service UUID</label>
+              <input type="text" id="serviceUuid" class="form-control form-control-sm" placeholder="19B10001-E8F2-537E-4F6C-D104768A1225">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Command Card -->
+      <div class="card mb-3">
+        <div class="card-header py-2">
+          <span class="small fw-medium">Manual Command</span>
+        </div>
+        <div class="card-body py-2">
+          <div class="input-group input-group-sm">
+            <input id="commandInput" type="text" class="form-control" value="PING" placeholder="Command" disabled>
+            <button id="sendCommand" type="button" class="btn btn-primary" disabled>Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Log Card -->
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+          <span class="small fw-medium">Log</span>
+          <button id="clearLog" type="button" class="btn btn-outline-secondary btn-sm py-0 px-2">Clear</button>
+        </div>
+        <div class="card-body p-0">
+          <div id="output">
+            <div id="content" class="small p-2 border-bottom bg-body-secondary">Output</div>
+            <div id="status" class="small text-muted px-2 py-1"></div>
+            <pre id="log" class="bg-dark text-light p-2 mb-0 rounded-bottom"></pre>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div id="alertRegion"></div>
-
-    <div class="row">
-      <!-- Left column: Connection card -->
-      <div class="col-md-5 mb-3">
-        <div class="card" id="connectionCard">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Bluetooth Connection</span>
-            <span id="connectionStatusBadge" class="badge bg-secondary">Idle</span>
-          </div>
-          <div class="card-body">
-            <!-- Scan button -->
-            <div class="d-flex align-items-center mb-3 gap-2">
-              <button id="requestBluetoothDevice" type="button" class="btn btn-primary">
-                <span id="scanSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
-                <span id="scanButtonText">Scan for Devices</span>
-              </button>
-              <span class="text-muted small">Looks for T5M4R-ARD peripheral</span>
-            </div>
-
-            <!-- Device select + Forget -->
-            <div class="mb-3">
-              <label class="form-label" for="devicesSelect">Permitted devices</label>
-              <div class="d-flex gap-2">
-                <select id="devicesSelect" class="form-select">
-                  <option value="" disabled selected>No permitted devices</option>
-                </select>
-                <button id="forgetBluetoothDevice" type="button" class="btn btn-outline-danger" disabled>Forget</button>
-              </div>
-            </div>
-
-            <!-- Connect button -->
-            <button id="connectBluetoothDevice" type="button" class="btn btn-success w-100" disabled>
-              <span id="connectSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
-              <span id="connectButtonText">Connect</span>
-            </button>
-
-            <!-- Advanced BLE config (collapsed by default) -->
-            <div class="mt-3">
-              <a class="small text-muted" data-bs-toggle="collapse" href="#advancedConfig" role="button" aria-expanded="false">
-                Advanced BLE configuration...
-              </a>
-              <div class="collapse mt-2" id="advancedConfig">
-                <div class="mb-2">
-                  <label class="form-label small" for="serviceUuid">Service UUID</label>
-                  <input type="text" id="serviceUuid" class="form-control form-control-sm" placeholder="19B10001-E8F2-537E-4F6C-D104768A1225">
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+  <!-- Chrome flags help overlay -->
+  <div id="chromeFlagsOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(0,0,0,0.5); z-index: 1060;">
+    <div class="position-absolute top-50 start-50 translate-middle bg-white rounded shadow p-4" style="max-width: 400px; width: 90%;">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <h5 class="mb-0">Chrome Setup</h5>
+        <button id="closeChromeHelpBtn" type="button" class="btn-close" aria-label="Close"></button>
       </div>
-
-      <!-- Right column: Commands & Log card -->
-      <div class="col-md-7 mb-3">
-        <div class="card h-100">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Commands &amp; Live Log</span>
-            <button id="clearLog" type="button" class="btn btn-outline-secondary btn-sm">Clear Log</button>
-          </div>
-          <div class="card-body">
-            <!-- Command send form -->
-            <div class="mb-3">
-              <label class="form-label small fw-bold" for="commandInput">Command</label>
-              <div class="input-group">
-                <input id="commandInput" type="text" class="form-control" value="PING" placeholder="Command to send" disabled>
-                <button id="sendCommand" type="button" class="btn btn-primary" disabled>Send Command</button>
-              </div>
-            </div>
-
-            <!-- Navigation form -->
-            <div class="mb-3 p-2 border rounded bg-body-secondary">
-              <label class="form-label small fw-bold">Navigation</label>
-              <div class="row g-2 mb-2">
-                <div class="col-auto">
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="trackGpsToggle" disabled>
-                    <label class="form-check-label small" for="trackGpsToggle">
-                      Track current GPS location
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div class="row g-2">
-                <div class="col-sm-6">
-                  <label class="form-label small" for="navOriginInput">Origin</label>
-                  <input id="navOriginInput" type="text" class="form-control form-control-sm" placeholder="e.g., 560102" disabled>
-                </div>
-                <div class="col-sm-6">
-                  <label class="form-label small" for="navDestInput">Destination</label>
-                  <input id="navDestInput" type="text" class="form-control form-control-sm" placeholder="e.g., 560103" disabled>
-                </div>
-              </div>
-              <div class="d-grid mt-2">
-                <button id="sendNavigation" type="button" class="btn btn-success btn-sm" disabled>Send Navigation</button>
-              </div>
-            </div>
-
-            <!-- Log output -->
-            <div id="output" class="border rounded">
-              <div id="content" class="small p-2 border-bottom bg-body-secondary">Output area</div>
-              <div id="status" class="small text-muted px-2 py-1"></div>
-              <pre id="log" class="bg-dark text-light p-2 mb-0 rounded-bottom"></pre>
-            </div>
-          </div>
-        </div>
+      <p class="small text-muted mb-2">Enable these Chrome flags:</p>
+      <div class="mb-2">
+        <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>
       </div>
+      <div class="mb-3">
+        <code class="user-select-all bg-light px-2 py-1 rounded d-inline-block small">chrome://flags/#enable-experimental-web-platform-features</code>
+      </div>
+      <button id="dismissChromeHelpBtn" type="button" class="btn btn-primary btn-sm">Got it</button>
     </div>
   </div>
 
@@ -186,19 +350,15 @@
         return typeof argument === 'string' ? argument : JSON.stringify(argument);
       }).join(' ');
       document.querySelector('#log').textContent += line + '\n';
-      // Auto-scroll to bottom
       var logEl = document.querySelector('#log');
       logEl.scrollTop = logEl.scrollHeight;
     },
-
     clearLog: function() {
       document.querySelector('#log').textContent = '';
     },
-
     setStatus: function(status) {
       document.querySelector('#status').textContent = status;
     },
-
     setContent: function(newContent) {
       var content = document.querySelector('#content');
       while(content.hasChildNodes()) {
@@ -216,10 +376,9 @@
     if (navigator.bluetooth) {
       return true;
     } else {
-      ChromeSamples.setStatus('Web Bluetooth API is not available.\n' +
-          'Please make sure the "Experimental Web Platform features" flag is enabled.');
+      ChromeSamples.setStatus('Web Bluetooth API is not available.');
       var alertRegion = document.querySelector('#alertRegion');
-      alertRegion.innerHTML = '<div class="alert alert-danger">Web Bluetooth API is not available. Enable the required Chrome flags.</div>';
+      alertRegion.innerHTML = '<div class="alert alert-danger small">Web Bluetooth not available. Enable Chrome flags.</div>';
       return false;
     }
   }
@@ -262,7 +421,37 @@
       updateUiState();
     });
   }
+
+  // Destination input handlers
+  document.querySelector('#clearDestButton').addEventListener('click', function() {
+    document.querySelector('#navDestAutocomplete').value = '';
+    document.querySelector('#navDestInput').value = '';
+    updateSendButtonState();
+  });
+
+  document.querySelector('#navDestAutocomplete').addEventListener('input', function() {
+    const val = this.value.trim();
+    document.querySelector('#navDestInput').value = val;
+    updateSendButtonState();
+  });
+
+  // Clear recents
+  document.querySelector('#clearRecentsBtn').addEventListener('click', function() {
+    clearAllRecentPlaces();
+    renderRecentPlaces();
+  });
+
+  function updateSendButtonState() {
+    const sendBtn = document.querySelector('#sendNavigation');
+    const dest = document.querySelector('#navDestInput').value.trim();
+    const origin = document.querySelector('#navOriginInput').value.trim();
+    const isConnected = typeof activeDevice !== 'undefined' && activeDevice && activeDevice.gatt && activeDevice.gatt.connected;
+    
+    // Enable if we have destination (origin auto-fills from GPS)
+    sendBtn.disabled = !dest || !isConnected;
+  }
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
 <!-- PWA Install Prompt Handler -->
@@ -270,7 +459,6 @@
   let deferredInstallPrompt = null;
   const installButton = document.getElementById('installButton');
 
-  // Listen for beforeinstallprompt event
   window.addEventListener('beforeinstallprompt', (event) => {
     console.log('[PWA] beforeinstallprompt fired');
     event.preventDefault();
@@ -278,12 +466,8 @@
     installButton.classList.add('show');
   });
 
-  // Handle install button click
   installButton.addEventListener('click', async () => {
-    if (!deferredInstallPrompt) {
-      console.log('[PWA] No deferred prompt available');
-      return;
-    }
+    if (!deferredInstallPrompt) return;
     deferredInstallPrompt.prompt();
     const { outcome } = await deferredInstallPrompt.userChoice;
     console.log('[PWA] User choice:', outcome);
@@ -292,7 +476,6 @@
     installButton.classList.remove('show');
   });
 
-  // Track successful installation
   window.addEventListener('appinstalled', (event) => {
     console.log('[PWA] App was installed');
     log('HeadSense app installed successfully!');
@@ -300,7 +483,6 @@
     installButton.classList.remove('show');
   });
 
-  // Register service worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
@@ -321,7 +503,6 @@
   function showChromeHelp() {
     chromeFlagsOverlay.classList.remove('d-none');
   }
-
   function hideChromeHelp() {
     chromeFlagsOverlay.classList.add('d-none');
   }

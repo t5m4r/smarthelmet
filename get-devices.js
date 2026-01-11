@@ -5,10 +5,14 @@ const DEFAULT_NAV_DEST_CHARACTERISTIC_UUID = '19B10002-E8F2-537E-4F6C-D104768A12
 
 // Geolocation configuration for navigation use case
 const GEOLOCATION_OPTIONS = {
-  enableHighAccuracy: true,  // Prefer GPS for higher accuracy in navigation
-  timeout: 5000,             // 5 seconds max for finding a fix
-  maximumAge: 30000          // Accept location up to 30 seconds old
+  enableHighAccuracy: true,
+  timeout: 5000,
+  maximumAge: 30000
 };
+
+// Recent places localStorage config
+const RECENT_INDEX_KEY = 'hs_recent_place_ids';
+const RECENT_MAX = 8;
 
 let activeDevice = null;
 let commandCharacteristic = null;
@@ -18,8 +22,119 @@ const textEncoder = new TextEncoder();
 let isConnecting = false;
 let isScanning = false;
 let geolocationWatchId = null;
-let isTrackingGpsForOrigin = false;
-let lastProcessedGeoTimestamp = 0;  // Track last processed position to avoid duplicates
+let isTrackingGpsForOrigin = true; // Default to tracking GPS
+let lastProcessedGeoTimestamp = 0;
+
+// ============ Recent Places localStorage Helpers ============
+
+function saveRecentPlace(place) {
+  if (!place || !place.id) return;
+  const key = 'hs_place_' + place.id;
+  const payload = {
+    id: place.id,
+    displayName: place.displayName || place.id,
+    lat: place.lat,
+    lng: place.lng,
+    lastUsed: Date.now()
+  };
+  try {
+    localStorage.setItem(key, JSON.stringify(payload));
+    
+    let index = [];
+    try {
+      index = JSON.parse(localStorage.getItem(RECENT_INDEX_KEY)) || [];
+    } catch {}
+    index = index.filter(id => id !== place.id);
+    index.unshift(place.id);
+    if (index.length > RECENT_MAX) index = index.slice(0, RECENT_MAX);
+    localStorage.setItem(RECENT_INDEX_KEY, JSON.stringify(index));
+  } catch (e) {
+    console.warn('Failed to save recent place:', e);
+  }
+}
+
+function loadRecentPlaces() {
+  let index = [];
+  try {
+    index = JSON.parse(localStorage.getItem(RECENT_INDEX_KEY)) || [];
+  } catch {}
+  return index
+    .map(id => {
+      try {
+        const data = JSON.parse(localStorage.getItem('hs_place_' + id));
+        return data && data.id ? data : null;
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+function clearAllRecentPlaces() {
+  try {
+    const index = JSON.parse(localStorage.getItem(RECENT_INDEX_KEY)) || [];
+    index.forEach(id => localStorage.removeItem('hs_place_' + id));
+    localStorage.removeItem(RECENT_INDEX_KEY);
+  } catch {}
+}
+
+function renderRecentPlaces() {
+  const container = document.getElementById('recentDestinations');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const places = loadRecentPlaces();
+  places.forEach(p => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-outline-secondary btn-sm rounded-pill recent-dest';
+    btn.textContent = p.displayName;
+    btn.dataset.placeId = p.id;
+    btn.dataset.lat = p.lat || '';
+    btn.dataset.lng = p.lng || '';
+    btn.addEventListener('click', () => {
+      onRecentDestinationClick(p);
+    });
+    container.appendChild(btn);
+  });
+}
+
+function onRecentDestinationClick(place) {
+  const autocomplete = document.getElementById('navDestAutocomplete');
+  const navDestInput = document.getElementById('navDestInput');
+  
+  if (autocomplete) autocomplete.value = place.displayName;
+  
+  // Set hidden field with lat,lng if available, otherwise displayName
+  if (navDestInput) {
+    if (place.lat && place.lng) {
+      navDestInput.value = place.lat.toFixed(6) + ',' + place.lng.toFixed(6);
+    } else {
+      navDestInput.value = place.displayName;
+    }
+  }
+  
+  // Update recent usage timestamp
+  saveRecentPlace(place);
+  
+  updateSendButtonState();
+  setNavStatus('');
+}
+
+function setNavStatus(msg) {
+  const el = document.getElementById('navStatusMessage');
+  if (el) el.textContent = msg;
+}
+
+function updateSendButtonState() {
+  const sendBtn = document.querySelector('#sendNavigation');
+  if (!sendBtn) return;
+  
+  const dest = document.querySelector('#navDestInput')?.value?.trim();
+  const isConnected = !!(activeDevice && activeDevice.gatt && activeDevice.gatt.connected && commandCharacteristic);
+  
+  sendBtn.disabled = !dest || !isConnected;
+}
 
 function updateUiState() {
   const devicesSelect = document.querySelector('#devicesSelect');
@@ -83,14 +198,14 @@ function updateUiState() {
     }
   }
 
-  // Command input and send button
+  // Command input and send button (only in offcanvas, require connection)
   if (commandInput) commandInput.disabled = !isConnected;
   if (sendCommandButton) sendCommandButton.disabled = !isConnected;
   
-  // Navigation inputs and send button
-  if (navOriginInput) navOriginInput.disabled = !isConnected;
-  if (navDestInput) navDestInput.disabled = !isConnected;
-  if (sendNavButton) sendNavButton.disabled = !isConnected;
+  // Navigation: origin is always visible (GPS auto-fills), dest is always editable
+  // Send button requires connection + destination
+  // navOriginInput stays readonly when GPS tracking is on, editable otherwise
+  // navDestInput is always enabled for input
 
   // Status badge
   if (statusBadge) {
@@ -120,15 +235,43 @@ function updateUiState() {
 
   // Track GPS toggle: enable if geolocation permission is granted
   if (trackGpsToggle) {
-    // Check if geolocation is available and permission might be granted
     const geoPermissionBadge = document.querySelector('#geoPermissionBadge');
     const isGeoGranted = geoPermissionBadge && geoPermissionBadge.textContent === 'Granted';
     trackGpsToggle.disabled = !isGeoGranted;
+  }
+  
+  // Update navbar Bluetooth status dot
+  updateBluetoothStatusDot(isConnected, isConnecting, isScanning);
+  
+  // Update send button state
+  updateSendButtonState();
+}
+
+function updateBluetoothStatusDot(isConnected, isConnecting, isScanning) {
+  const dot = document.getElementById('btStatusDot');
+  if (!dot) return;
+  
+  dot.classList.remove('connected', 'connecting', 'disconnected');
+  
+  if (isConnected) {
+    dot.classList.add('connected');
+  } else if (isConnecting || isScanning) {
+    dot.classList.add('connecting');
+  } else {
+    dot.classList.add('disconnected');
   }
 }
 
 function populateBluetoothDevices() {
   const devicesSelect = document.querySelector('#devicesSelect');
+  
+  // Check if getDevices() is available (requires Chrome flag)
+  if (!navigator.bluetooth || typeof navigator.bluetooth.getDevices !== 'function') {
+    log('Note: getDevices() not available. Enable chrome://flags/#enable-web-bluetooth-new-permissions-backend');
+    updateUiState();
+    return;
+  }
+  
   log('Getting existing permitted Bluetooth devices...');
   navigator.bluetooth.getDevices()
   .then(devices => {
@@ -322,12 +465,23 @@ async function onSendCommandButtonClick() {
 async function onSendNavigationButtonClick() {
   const originInput = document.querySelector('#navOriginInput');
   const destInput = document.querySelector('#navDestInput');
-  const origin = (originInput.value || '').trim();
-  const destination = (destInput.value || '').trim();
+  const destAutocomplete = document.querySelector('#navDestAutocomplete');
+  const origin = (originInput?.value || '').trim();
+  const destination = (destInput?.value || '').trim();
+  const displayName = (destAutocomplete?.value || destination).trim();
   
-  if (!origin || !destination) {
-    throw new Error('Both origin and destination are required.');
+  if (!destination) {
+    setNavStatus('Please enter a destination.');
+    return;
   }
+  
+  // Use GPS origin if available, otherwise show error
+  if (!origin && isTrackingGpsForOrigin) {
+    setNavStatus('Waiting for GPS location...');
+    return;
+  }
+  
+  setNavStatus('Sending to helmet...');
   
   await connectSelectedBluetoothDevice();
   if (!navOriginCharacteristic || !navDestCharacteristic) {
@@ -339,6 +493,28 @@ async function onSendNavigationButtonClick() {
   
   await navDestCharacteristic.writeValue(textEncoder.encode(destination));
   log('>> Destination: ' + destination);
+  
+  // Save destination to recent places
+  const placeId = 'manual_' + Date.now();
+  let lat = null, lng = null;
+  
+  // Try to parse lat,lng from destination
+  const coordMatch = destination.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+  if (coordMatch) {
+    lat = parseFloat(coordMatch[1]);
+    lng = parseFloat(coordMatch[2]);
+  }
+  
+  saveRecentPlace({
+    id: placeId,
+    displayName: displayName,
+    lat: lat,
+    lng: lng
+  });
+  renderRecentPlaces();
+  
+  setNavStatus('✓ Sent to helmet!');
+  setTimeout(() => setNavStatus(''), 3000);
 }
 
 function handleDisconnection(event) {
@@ -383,25 +559,27 @@ async function updateGeolocationPermissionIndicator(state) {
 }
 
 function updateGeolocationCoordinates(latitude, longitude) {
-  const coordsInput = document.querySelector('#geoCoordinates');
-  if (coordsInput) {
-    coordsInput.value = latitude.toFixed(6) + ', ' + longitude.toFixed(6);
-  }
-
+  const coordsStr = latitude.toFixed(6) + ', ' + longitude.toFixed(6);
+  const coordsPayload = latitude.toFixed(6) + ',' + longitude.toFixed(6);
+  
   // Update Google Maps link
   const mapsLink = document.querySelector('#geoMapsLink');
   if (mapsLink) {
-    const encodedCoords = encodeURIComponent(latitude.toFixed(6) + ',' + longitude.toFixed(6));
+    const encodedCoords = encodeURIComponent(coordsPayload);
     mapsLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodedCoords;
     mapsLink.style.display = 'inline-block';
   }
 
-  // Auto-update Origin field if tracking is enabled
-  if (isTrackingGpsForOrigin) {
-    const navOriginInput = document.querySelector('#navOriginInput');
-    if (navOriginInput) {
-      navOriginInput.value = latitude.toFixed(6) + ',' + longitude.toFixed(6);
-    }
+  // Always update Origin field with GPS (consumer UX - GPS is primary source)
+  const navOriginInput = document.querySelector('#navOriginInput');
+  if (navOriginInput) {
+    navOriginInput.value = coordsPayload;
+  }
+  
+  // Update origin summary text
+  const originSummary = document.getElementById('originSummaryText');
+  if (originSummary) {
+    originSummary.textContent = 'GPS: ' + coordsStr;
   }
 }
 
@@ -566,22 +744,29 @@ async function requestGeolocationPermissionOnLoad() {
 window.onload = () => {
   requestGeolocationPermissionOnLoad();
   populateBluetoothDevices();
+  renderRecentPlaces();
   updateUiState();
 
-  // Setup GPS tracking toggle
+  // Setup GPS tracking toggle (default checked)
   const trackGpsToggle = document.querySelector('#trackGpsToggle');
   if (trackGpsToggle) {
+    trackGpsToggle.checked = true;
+    isTrackingGpsForOrigin = true;
+    
     trackGpsToggle.addEventListener('change', function() {
       isTrackingGpsForOrigin = this.checked;
       const navOriginInput = document.querySelector('#navOriginInput');
+      const originSummary = document.getElementById('originSummaryText');
       
       if (isTrackingGpsForOrigin) {
         log('GPS tracking for Origin enabled.');
         navOriginInput.setAttribute('readonly', 'readonly');
+        if (originSummary) originSummary.textContent = 'Current location';
       } else {
         log('GPS tracking for Origin disabled.');
         navOriginInput.value = '';
         navOriginInput.removeAttribute('readonly');
+        if (originSummary) originSummary.textContent = 'Manual entry';
       }
     });
   }
