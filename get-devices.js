@@ -24,6 +24,8 @@ let isScanning = false;
 let geolocationWatchId = null;
 let isTrackingGpsForOrigin = true; // Default to tracking GPS
 let lastProcessedGeoTimestamp = 0;
+let placesAutocompleteElement = null;
+let selectedPlace = null; // Stores the currently selected place from autocomplete
 
 // ============ Recent Places localStorage Helpers ============
 
@@ -100,25 +102,171 @@ function renderRecentPlaces() {
 }
 
 function onRecentDestinationClick(place) {
-  const autocomplete = document.getElementById('navDestAutocomplete');
   const navDestInput = document.getElementById('navDestInput');
+  const navDestPlaceId = document.getElementById('navDestPlaceId');
+  const navDestDisplayName = document.getElementById('navDestDisplayName');
   
-  if (autocomplete) autocomplete.value = place.displayName;
-  
-  // Set hidden field with lat,lng if available, otherwise displayName
+  // Set hidden fields - prefer Place ID (prefixed), fallback to lat,lng
   if (navDestInput) {
-    if (place.lat && place.lng) {
+    if (place.id && !place.id.startsWith('manual_')) {
+      navDestInput.value = 'place_id:' + place.id;
+    } else if (place.lat && place.lng) {
       navDestInput.value = place.lat.toFixed(6) + ',' + place.lng.toFixed(6);
     } else {
       navDestInput.value = place.displayName;
     }
   }
+  if (navDestPlaceId) navDestPlaceId.value = place.id || '';
+  if (navDestDisplayName) navDestDisplayName.value = place.displayName || '';
+  
+  // Store as selected place for sending
+  selectedPlace = place;
   
   // Update recent usage timestamp
   saveRecentPlace(place);
   
+  // Show selected destination indicator
+  showSelectedDestination(place.displayName);
+  
   updateSendButtonState();
   setNavStatus('');
+}
+
+// ============ Selected Destination Indicator ============
+
+function showSelectedDestination(displayName) {
+  const indicator = document.getElementById('selectedDestIndicator');
+  const textEl = document.getElementById('selectedDestText');
+  if (indicator && textEl) {
+    textEl.textContent = displayName;
+    indicator.style.display = 'block';
+  }
+}
+
+function clearSelectedDestination() {
+  const indicator = document.getElementById('selectedDestIndicator');
+  if (indicator) indicator.style.display = 'none';
+  
+  // Clear hidden fields
+  const navDestInput = document.getElementById('navDestInput');
+  const navDestPlaceId = document.getElementById('navDestPlaceId');
+  const navDestDisplayName = document.getElementById('navDestDisplayName');
+  if (navDestInput) navDestInput.value = '';
+  if (navDestPlaceId) navDestPlaceId.value = '';
+  if (navDestDisplayName) navDestDisplayName.value = '';
+  
+  selectedPlace = null;
+  updateSendButtonState();
+}
+
+// ============ Google Places UI Kit Autocomplete ============
+
+async function initPlacesAutocomplete() {
+  const container = document.getElementById('autocompleteContainer');
+  if (!container) {
+    log('Autocomplete container not found');
+    return;
+  }
+
+  try {
+    const { BasicPlaceAutocompleteElement } = await google.maps.importLibrary('places');
+    
+    // Get current GPS location for initial bias (if available)
+    const originInput = document.getElementById('navOriginInput');
+    const currentCoords = originInput?.value?.trim();
+    let initialLocationBias = null;
+    
+    if (currentCoords) {
+      const match = currentCoords.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        // Bias within 5km radius of current location
+        initialLocationBias = {
+          center: { lat, lng },
+          radius: 5000
+        };
+        log('Autocomplete locationBias set to GPS: ' + lat.toFixed(4) + ',' + lng.toFixed(4));
+      }
+    }
+    
+    placesAutocompleteElement = new BasicPlaceAutocompleteElement({
+      includedPrimaryTypes: ['geocode', 'establishment'],
+      locationBias: initialLocationBias,
+    });
+    
+    container.appendChild(placesAutocompleteElement);
+    
+    // Handle place selection
+    placesAutocompleteElement.addEventListener('gmp-select', async (event) => {
+      const place = event.place;
+      if (!place || !place.id) {
+        log('No place selected');
+        return;
+      }
+      
+      log('Place selected: ' + place.id);
+      
+      // Fetch displayName and location for the selected place
+      try {
+        await place.fetchFields({ fields: ['displayName', 'location', 'formattedAddress'] });
+        
+        const displayName = place.displayName || place.formattedAddress || 'Unknown place';
+        const lat = place.location?.lat();
+        const lng = place.location?.lng();
+        
+        log('Place details: ' + displayName + ' (' + (lat ? lat.toFixed(6) + ',' + lng.toFixed(6) : 'no coords') + ')');
+        
+        // Update hidden fields
+        const navDestInput = document.getElementById('navDestInput');
+        const navDestPlaceId = document.getElementById('navDestPlaceId');
+        const navDestDisplayName = document.getElementById('navDestDisplayName');
+        
+        // BLE payload: prefer Place ID (prefixed) for Google Navigation API
+        if (navDestInput) {
+          navDestInput.value = 'place_id:' + place.id;
+        }
+        if (navDestPlaceId) navDestPlaceId.value = place.id;
+        if (navDestDisplayName) navDestDisplayName.value = displayName;
+        
+        // Store selected place
+        selectedPlace = {
+          id: place.id,
+          displayName: displayName,
+          lat: lat,
+          lng: lng
+        };
+        
+        // Save to recents immediately (using placeID as key)
+        saveRecentPlace(selectedPlace);
+        renderRecentPlaces();
+        
+        // Show selected destination indicator
+        showSelectedDestination(displayName);
+        
+        updateSendButtonState();
+        setNavStatus('');
+      } catch (err) {
+        log('Argh! Failed to fetch place details: ' + err);
+        setNavStatus('Could not load place details');
+      }
+    });
+    
+    log('Places Autocomplete initialized');
+  } catch (error) {
+    log('Argh! Places UI Kit failed to load: ' + error);
+    // Fallback: show a plain text input
+    container.innerHTML = '<input type="text" id="navDestFallback" class="form-control form-control-lg" placeholder="Enter address (Places API unavailable)">';
+    const fallbackInput = document.getElementById('navDestFallback');
+    if (fallbackInput) {
+      fallbackInput.addEventListener('input', function() {
+        const navDestInput = document.getElementById('navDestInput');
+        if (navDestInput) navDestInput.value = this.value.trim();
+        selectedPlace = null;
+        updateSendButtonState();
+      });
+    }
+  }
 }
 
 function setNavStatus(msg) {
@@ -465,10 +613,10 @@ async function onSendCommandButtonClick() {
 async function onSendNavigationButtonClick() {
   const originInput = document.querySelector('#navOriginInput');
   const destInput = document.querySelector('#navDestInput');
-  const destAutocomplete = document.querySelector('#navDestAutocomplete');
+  const destDisplayName = document.querySelector('#navDestDisplayName');
   const origin = (originInput?.value || '').trim();
   const destination = (destInput?.value || '').trim();
-  const displayName = (destAutocomplete?.value || destination).trim();
+  const displayName = (destDisplayName?.value || destination).trim();
   
   if (!destination) {
     setNavStatus('Please enter a destination.');
@@ -494,24 +642,27 @@ async function onSendNavigationButtonClick() {
   await navDestCharacteristic.writeValue(textEncoder.encode(destination));
   log('>> Destination: ' + destination);
   
-  // Save destination to recent places
-  const placeId = 'manual_' + Date.now();
-  let lat = null, lng = null;
-  
-  // Try to parse lat,lng from destination
-  const coordMatch = destination.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
-  if (coordMatch) {
-    lat = parseFloat(coordMatch[1]);
-    lng = parseFloat(coordMatch[2]);
+  // Save to recents if using fallback text input (Places Autocomplete saves on selection)
+  if (!selectedPlace || !selectedPlace.id) {
+    // Fallback for manual text entry
+    let lat = null, lng = null;
+    const coordMatch = destination.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+    if (coordMatch) {
+      lat = parseFloat(coordMatch[1]);
+      lng = parseFloat(coordMatch[2]);
+    }
+    saveRecentPlace({
+      id: 'manual_' + Date.now(),
+      displayName: displayName || destination,
+      lat: lat,
+      lng: lng
+    });
+    renderRecentPlaces();
   }
   
-  saveRecentPlace({
-    id: placeId,
-    displayName: displayName,
-    lat: lat,
-    lng: lng
-  });
-  renderRecentPlaces();
+  // Clear selected place and indicator after sending
+  selectedPlace = null;
+  clearSelectedDestination();
   
   setNavStatus('✓ Sent to helmet!');
   setTimeout(() => setNavStatus(''), 3000);
@@ -580,6 +731,14 @@ function updateGeolocationCoordinates(latitude, longitude) {
   const originSummary = document.getElementById('originSummaryText');
   if (originSummary) {
     originSummary.textContent = 'GPS: ' + coordsStr;
+  }
+  
+  // Update Places Autocomplete locationBias with new GPS coordinates
+  if (placesAutocompleteElement) {
+    placesAutocompleteElement.locationBias = {
+      center: { lat: latitude, lng: longitude },
+      radius: 5000
+    };
   }
 }
 
@@ -745,7 +904,14 @@ window.onload = () => {
   requestGeolocationPermissionOnLoad();
   populateBluetoothDevices();
   renderRecentPlaces();
+  initPlacesAutocomplete();
   updateUiState();
+
+  // Clear selected destination button handler
+  const clearSelectedBtn = document.getElementById('clearSelectedDest');
+  if (clearSelectedBtn) {
+    clearSelectedBtn.addEventListener('click', clearSelectedDestination);
+  }
 
   // Setup GPS tracking toggle (default checked)
   const trackGpsToggle = document.querySelector('#trackGpsToggle');

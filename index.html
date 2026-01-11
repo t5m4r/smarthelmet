@@ -12,6 +12,14 @@
     <meta name="apple-mobile-web-app-title" content="HeadSense">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <!-- Google Maps JavaScript API (Places UI Kit) -->
+    <script>
+      (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+        key: "AIzaSyDUIdfyQfks5-2tJYtL-Sy7afg1O9b_PMU",
+        v: "weekly",
+        internalUsageAttributionIds: "gmp_mcp_codeassist_v0.1_github"
+      });
+    </script>
     <script src="get-devices.js"></script>
     <style>
       :root {
@@ -104,6 +112,83 @@
       #installButton { display: none; }
       #installButton.show { display: inline-block; }
       
+      .autocomplete-wrapper {
+        position: relative;
+      }
+      
+      .autocomplete-wrapper gmp-basic-place-autocomplete {
+        width: 100%;
+        display: block;
+        --gmp-font-size-default: 1.1rem;
+        --gmp-space-default: 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background-color: #fff;
+        font: inherit;
+        font-size: 1.1rem;
+        line-height: 1.5;
+        min-height: 52px;
+      }
+      
+      .autocomplete-wrapper gmp-basic-place-autocomplete:focus-within {
+        border-color: var(--hs-primary);
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+      }
+      
+      .selected-dest-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        background: #fff;
+        border: 2px solid var(--hs-primary);
+        border-radius: 0.375rem;
+        z-index: 5;
+        cursor: pointer;
+      }
+      
+      .selected-dest-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--hs-primary);
+        color: #fff;
+        padding: 0.4rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 1rem;
+        font-weight: 500;
+        max-width: 100%;
+      }
+      
+      .selected-dest-chip .selected-dest-icon {
+        flex-shrink: 0;
+      }
+      
+      .selected-dest-chip #selectedDestText {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .selected-dest-clear {
+        flex-shrink: 0;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.8);
+        font-size: 1rem;
+        padding: 0 0.25rem;
+        cursor: pointer;
+        line-height: 1;
+      }
+      
+      .selected-dest-clear:hover {
+        color: #fff;
+      }
+      
       @media (max-width: 576px) {
         body { padding-top: 52px; }
         .container { padding-left: 0.75rem; padding-right: 0.75rem; }
@@ -147,26 +232,26 @@
         <div class="card-body">
           <h1 class="h4 mb-3 text-center">Where are you going?</h1>
 
-          <!-- Destination input -->
+          <!-- Destination input (Places UI Kit Autocomplete) -->
           <div class="mb-3">
-            <label for="navDestAutocomplete" class="form-label fw-semibold d-flex align-items-center gap-2">
+            <label class="form-label fw-semibold d-flex align-items-center gap-2">
               <span aria-hidden="true">📍</span> Destination
             </label>
-            <div class="input-group input-group-lg">
-              <input id="navDestAutocomplete"
-                     type="text"
-                     class="form-control"
-                     placeholder="Enter address or place"
-                     autocomplete="off">
-              <button id="clearDestButton"
-                      type="button"
-                      class="btn btn-outline-secondary"
-                      title="Clear destination">
-                ✕
-              </button>
+            <div id="autocompleteContainer" class="autocomplete-wrapper">
+              <!-- BasicPlaceAutocompleteElement will be appended here by JS -->
+              <!-- Selected destination indicator (overlays inside the input) -->
+              <div id="selectedDestIndicator" class="selected-dest-overlay" style="display: none;">
+                <span class="selected-dest-chip">
+                  <span class="selected-dest-icon">📍</span>
+                  <span id="selectedDestText"></span>
+                  <button type="button" id="clearSelectedDest" class="selected-dest-clear" aria-label="Clear destination">✕</button>
+                </span>
+              </div>
             </div>
-            <!-- Hidden field for BLE payload -->
+            <!-- Hidden fields for BLE payload and place metadata -->
             <input id="navDestInput" type="hidden">
+            <input id="navDestPlaceId" type="hidden">
+            <input id="navDestDisplayName" type="hidden">
           </div>
 
           <!-- Recent destinations -->
@@ -421,19 +506,6 @@
       updateUiState();
     });
   }
-
-  // Destination input handlers
-  document.querySelector('#clearDestButton').addEventListener('click', function() {
-    document.querySelector('#navDestAutocomplete').value = '';
-    document.querySelector('#navDestInput').value = '';
-    updateSendButtonState();
-  });
-
-  document.querySelector('#navDestAutocomplete').addEventListener('input', function() {
-    const val = this.value.trim();
-    document.querySelector('#navDestInput').value = val;
-    updateSendButtonState();
-  });
 
   // Clear recents
   document.querySelector('#clearRecentsBtn').addEventListener('click', function() {
