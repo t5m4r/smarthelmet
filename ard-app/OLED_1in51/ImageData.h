@@ -32,8 +32,9 @@
 #ifndef _IMAGEDATA_H_
 #define _IMAGEDATA_H_
 
+/*
 extern const unsigned char gImage_1in3[];	//rotate 90
-
+*/
 
 #endif
 /* FILE END */
