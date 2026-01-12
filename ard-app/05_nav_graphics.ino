@@ -1,7 +1,8 @@
 // 05_nav_graphics.ino - ASCII navigation icons for OLED display
 // Integrates with Waveshare OLED_1in51 library (128x64 logical with Rotate=270)
 
-#include "OLED_1in51/GUI_paint.h"
+#include <string.h>
+#include "OLED_1in51/GUI_Paint.h"
 #include "navigation.h"
 
 // Display dimensions (logical, after Rotate=270)
@@ -111,9 +112,16 @@ const char* NAV_NAMES[] = {
 NavInstruction parseNavInstruction(const char* cmd) {
   for (int i = 0; i < NAV_COUNT; i++) {
     if (strcmp(cmd, NAV_NAMES[i]) == 0) {
+      Serial.print("[NAV] Parsed '");
+      Serial.print(cmd);
+      Serial.print("' -> ");
+      Serial.println(i);
       return (NavInstruction)i;
     }
   }
+  Serial.print("[NAV] Unknown maneuver: '");
+  Serial.print(cmd);
+  Serial.println("' -> NAV_NONE");
   return NAV_NONE;
 }
 
@@ -128,6 +136,18 @@ UWORD centerTextX(const char* text, UWORD fontWidth) {
 // Call OLED_1IN51_Display(BlackImage) after to refresh screen
 void drawNavInstruction(NavInstruction nav, UBYTE* image) {
   if (nav >= NAV_COUNT) nav = NAV_NONE;
+  
+  Serial.print("[NAV] Drawing nav=");
+  Serial.print(nav);
+  Serial.print(" label='");
+  Serial.print(NAV_LABELS[nav]);
+  Serial.print("' image=0x");
+  Serial.println((unsigned long)image, HEX);
+  
+  if (image == NULL) {
+    Serial.println("[NAV] ERROR: image buffer is NULL!");
+    return;
+  }
   
   Paint_SelectImage(image);
   Paint_Clear(BLACK);
