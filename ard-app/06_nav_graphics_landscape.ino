@@ -234,28 +234,45 @@ void landscapeDrawNavFromApi(
 }
 
 // =============================================================================
-// BACKWARD COMPATIBILITY WRAPPERS
+// ORIENTATION-AWARE WRAPPER FUNCTIONS
 // =============================================================================
-// These call the landscape versions for existing code
+// Pass isLandscape=true for 128x64, false for 64x128
 
-void drawNavInstruction(NavInstruction nav, UBYTE* image) {
-  landscapeDrawNavInstruction(nav, image);
+void drawNavInstruction(NavInstruction nav, UBYTE* image, bool isLandscape) {
+  if (isLandscape) {
+    landscapeDrawNavInstruction(nav, image);
+  } else {
+    portraitDrawNavInstruction(nav, image);
+  }
 }
 
-void drawNavArrowOnly(NavInstruction nav, UBYTE* image) {
-  landscapeDrawNavArrowOnly(nav, image);
+void drawNavArrowOnly(NavInstruction nav, UBYTE* image, bool isLandscape) {
+  if (isLandscape) {
+    landscapeDrawNavArrowOnly(nav, image);
+  } else {
+    portraitDrawNavArrowOnly(nav, image);
+  }
 }
 
-void drawNavWithDistance(NavInstruction nav, const char* distance, UBYTE* image) {
-  landscapeDrawNavWithDistance(nav, distance, image);
+void drawNavWithDistance(NavInstruction nav, const char* distance, UBYTE* image, bool isLandscape) {
+  if (isLandscape) {
+    landscapeDrawNavWithDistance(nav, distance, image);
+  } else {
+    portraitDrawNavWithDistance(nav, distance, image);
+  }
 }
 
-// High-level API wrapper
+// High-level API wrapper with orientation flag
 void drawNavFromApi(
     const char* maneuver,
     const char* distanceText,
     const char* htmlInstructions,
-    UBYTE* image
+    UBYTE* image,
+    bool isLandscape
 ) {
-  landscapeDrawNavFromApi(maneuver, distanceText, htmlInstructions, image);
+  if (isLandscape) {
+    landscapeDrawNavFromApi(maneuver, distanceText, htmlInstructions, image);
+  } else {
+    portraitDrawNavFromApi(maneuver, distanceText, htmlInstructions, image);
+  }
 }

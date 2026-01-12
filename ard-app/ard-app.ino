@@ -32,6 +32,9 @@ int current_step = 0;
 
 bool doHttpWork = false;
 
+// OLED orientation: true = landscape (128x64, Rotate=270), false = portrait (64x128, Rotate=0)
+bool isLandscapeOLED = false;
+
 extern UBYTE *BlackImage;  // From OLED_1in51.ino
 
 void setup() {
@@ -103,7 +106,7 @@ void setup() {
   if (wifiConnectionStatus == WL_CONNECTED) {
     printWifiStatus();
   }
-  oled_setup();
+  oled_setup(isLandscapeOLED);
 }
 
 void loop() {
@@ -234,7 +237,7 @@ void loop() {
         Serial.println(stripHtmlTags(htmlInstructions));
         
         // Render to OLED using quadrant layout with full navigation info
-        drawNavFromApi(maneuver, distanceText, htmlInstructions, BlackImage);
+        drawNavFromApi(maneuver, distanceText, htmlInstructions, BlackImage, isLandscapeOLED);
         OLED_1IN51_Display(BlackImage);
         
         current_step++;

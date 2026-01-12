@@ -56,17 +56,45 @@ void landscapeDrawNavFromApi(
 );
 
 // =============================================================================
-// BACKWARD COMPATIBILITY WRAPPERS
+// PORTRAIT MODE FUNCTIONS (08_nav_graphics_portrait.ino)
 // =============================================================================
 
-void drawNavInstruction(NavInstruction nav, UBYTE* image);
-void drawNavArrowOnly(NavInstruction nav, UBYTE* image);
-void drawNavWithDistance(NavInstruction nav, const char* distance, UBYTE* image);
-void drawNavFromApi(
+// Simple centered layout
+void portraitDrawNavInstruction(NavInstruction nav, UBYTE* image);
+void portraitDrawNavArrowOnly(NavInstruction nav, UBYTE* image);
+void portraitDrawNavWithDistance(NavInstruction nav, const char* distance, UBYTE* image);
+
+// Full vertical stacking layout
+void portraitDrawNavQuadrant(
+    NavInstruction nav,
+    const char* distance,
+    const char* instrLine1,
+    const char* instrLine2,
+    UBYTE* image
+);
+
+// High-level: processes raw API data and renders portrait layout
+void portraitDrawNavFromApi(
     const char* maneuver,
     const char* distanceText,
     const char* htmlInstructions,
     UBYTE* image
+);
+
+// =============================================================================
+// ORIENTATION-AWARE WRAPPER FUNCTIONS
+// =============================================================================
+// Pass isLandscape=true for 128x64, false for 64x128
+
+void drawNavInstruction(NavInstruction nav, UBYTE* image, bool isLandscape);
+void drawNavArrowOnly(NavInstruction nav, UBYTE* image, bool isLandscape);
+void drawNavWithDistance(NavInstruction nav, const char* distance, UBYTE* image, bool isLandscape);
+void drawNavFromApi(
+    const char* maneuver,
+    const char* distanceText,
+    const char* htmlInstructions,
+    UBYTE* image,
+    bool isLandscape
 );
 
 #endif // NAV_GRAPHICS_H

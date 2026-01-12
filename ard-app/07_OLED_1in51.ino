@@ -16,7 +16,8 @@
 //int counter = 0;
 UBYTE *BlackImage;
 
-void oled_setup() {
+// isLandscape: true = 128x64 (Rotate=270), false = 64x128 (Rotate=0)
+void oled_setup(bool isLandscape) {
   System_Init();
   Serial.print(F("OLED_Init()...\r\n"));
   OLED_1IN51_Init();
@@ -32,8 +33,12 @@ void oled_setup() {
       Serial.print("Failed to apply for black memory...\r\n");
       return;
   }
-  Serial.print("Paint_NewImage\r\n");
-  Paint_NewImage(BlackImage, OLED_1IN51_WIDTH, OLED_1IN51_HEIGHT, 270, BLACK);
+  
+  // Set rotation based on orientation: 270 for landscape (128x64), 0 for portrait (64x128)
+  UWORD rotation = isLandscape ? 270 : 0;
+  Serial.print("Paint_NewImage with rotation=");
+  Serial.println(rotation);
+  Paint_NewImage(BlackImage, OLED_1IN51_WIDTH, OLED_1IN51_HEIGHT, rotation, BLACK);
   
 /*
   //1.Select Image
