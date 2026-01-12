@@ -2,6 +2,31 @@
 
 Navigation HUD layout for the Waveshare 1.51" Transparent OLED (128×64 pixels).
 
+## Orientation Modes
+
+| Mode | Dimensions | Rotate | File |
+|------|------------|--------|------|
+| **Landscape** | 128×64 (wide×tall) | 270 | `06_nav_graphics_landscape.ino` |
+| Portrait | 64×128 (narrow×tall) | 0 | `08_nav_graphics_portrait.ino` (TBD) |
+
+This document describes the **Landscape Mode** layout.
+
+## File Compilation Order
+
+Arduino compiles `.ino` files in lexicographical order:
+
+| Order | File | Purpose |
+|-------|------|---------|
+| 1 | `ard-app.ino` | Main sketch, setup(), loop() |
+| 2 | `01_bt-le-helpers.ino` | BLE event handlers |
+| 3 | `02_httpnetworking.ino` | WiFi utilities |
+| 4 | `03_map_navigation.ino` | Google Maps API |
+| 5 | `04_smarthelmet_utils.ino` | Text processing utilities |
+| 6 | `05_nav_data.ino` | Shared nav arrays & parseNavInstruction() |
+| 7 | `06_nav_graphics_landscape.ino` | Landscape drawing functions |
+| 8 | `07_OLED_1in51.ino` | OLED init & setup |
+| 9 | `08_nav_graphics_portrait.ino` | Portrait drawing (TBD) |
+
 ## Display Specifications
 
 | Property | Value |
@@ -198,36 +223,71 @@ Source: `routes[0].legs[0].steps[i]`
 | Font16 | 11px | 16px | Distance, arrows |
 | Font24 | 17px | 24px | Large emphasis (limited use) |
 
-## Implementation Functions
+## Implementation Functions (Landscape Mode)
 
-### Required Functions
+### Implemented in `06_nav_graphics_landscape.ino`
 
 ```cpp
-// Draw the full navigation layout
-void drawNavLayout(
-    NavInstruction nav,      // Arrow type
+// Simple centered layout: Arrow + Label
+void landscapeDrawNavInstruction(NavInstruction nav, UBYTE* image);
+
+// Compact arrow only (no label)
+void landscapeDrawNavArrowOnly(NavInstruction nav, UBYTE* image);
+
+// Arrow + distance at bottom
+void landscapeDrawNavWithDistance(NavInstruction nav, const char* distance, UBYTE* image);
+
+// QUADRANT LAYOUT: Full navigation display
+void landscapeDrawNavQuadrant(
+    NavInstruction nav,      // Arrow type (NAV_TURN_LEFT, etc.)
     const char* distance,    // "0.6km"
-    const char* line1,       // Instruction line 1
-    const char* line2,       // Instruction line 2 (can be empty)
+    const char* instrLine1,  // Instruction line 1
+    const char* instrLine2,  // Instruction line 2 (can be empty)
     UBYTE* image
 );
 
-// Strip HTML tags from instructions
+// Backward-compatible wrappers (call landscape versions)
+void drawNavInstruction(NavInstruction nav, UBYTE* image);
+void drawNavArrowOnly(NavInstruction nav, UBYTE* image);
+void drawNavWithDistance(NavInstruction nav, const char* distance, UBYTE* image);
+```
+
+### Text Processing Utilities (Implemented)
+
+```cpp
+// Strip HTML tags from Google Directions API html_instructions
+// Handles: <b>, </b>, <div...>, Unicode escapes (\u003c, \u003e)
 String stripHtmlTags(const char* html);
 
-// Word-wrap text to fit display width
-void wrapText(
-    const char* text,        // Input text
-    char* line1,             // Output line 1
-    char* line2,             // Output line 2
-    int maxChars             // Max chars per line (~18 for Font12)
+// Format distance: remove space between number and unit
+// "0.6 km" → "0.6km"
+String formatDistance(const char* distText);
+
+// Word-wrap text into two lines at word boundaries
+void wrapText(const char* text, char* line1, char* line2, int maxChars);
+
+// Abbreviate road terms: "Road"→"Rd", "Street"→"St", etc.
+String abbreviateRoadName(const char* text);
+```
+
+### High-Level Convenience Function
+
+```cpp
+// Process raw API data and render full quadrant layout in one call
+void landscapeDrawNavFromApi(
+    const char* maneuver,         // "turn-left", "keep-right"
+    const char* distanceText,     // "0.6 km"
+    const char* htmlInstructions, // Raw HTML from API
+    UBYTE* image
 );
 
-// Center text in left 43px region
-UWORD centerLeftX(const char* text, UWORD fontWidth);
-
-// Format distance (remove space)
-String formatDistance(const char* distText);  // "0.6 km" → "0.6km"
+// Backward-compatible wrapper
+void drawNavFromApi(
+    const char* maneuver,
+    const char* distanceText,
+    const char* htmlInstructions,
+    UBYTE* image
+);
 ```
 
 ## Design Rationale

@@ -13,6 +13,7 @@
 #include "arduino_secrets.h"
 #include "configurations.h"
 #include "navigation.h"
+#include "nav_graphics.h"
 
 int wifiConnectionStatus = WL_IDLE_STATUS;
 
@@ -163,6 +164,7 @@ void loop() {
             JsonObject filter_routes_0_legs_0_steps_0 = filter["routes"][0]["legs"][0]["steps"].add<JsonObject>();
             filter_routes_0_legs_0_steps_0["html_instructions"] = true;
             filter_routes_0_legs_0_steps_0["maneuver"] = true;
+            filter_routes_0_legs_0_steps_0["distance"]["text"] = true;
             // Now we've got to the HTTP response body, so we can feed it to a JSON processor/parser.
             DeserializationError error = deserializeJson(jsonDoc, httpsClient, DeserializationOption::Filter(filter));
             switch (error.code()) {
@@ -196,24 +198,45 @@ void loop() {
         Serial.println("Number of steps is: " + String(navSteps.size()));
         if (current_step >= navSteps.size()) {
           doHttpWork = false;
-          //Serial.println("All steps traversed, stopping more HTTP navigation");
           current_step = 0;
           return;
         }
-        //Serial.print("STEP " + String(current_step) + " -> HTML instruction ");
-        //const char* html_step = navSteps[current_step]["html_instructions"].as<const char*>();
-        //const char* instructions_text = stripHtmlTags(html_step).c_str();
-        //Serial.println(instructions_text);
         
-
-        if (navSteps[current_step]["maneuver"].is<String>()) {
-          const char* maneuver = navSteps[current_step]["maneuver"];
-          Serial.print("STEP " + String(current_step) + " -> Maneuver ");
-          Serial.println(maneuver);
-          NavInstruction nav = parseNavInstruction(maneuver);
-          drawNavInstruction(nav, BlackImage);
-          OLED_1IN51_Display(BlackImage);
+        // Extract navigation data from current step
+        JsonObject step = navSteps[current_step];
+        
+        // Get maneuver (may not exist for first step "Head southwest")
+        const char* maneuver = "continue";  // Default if no maneuver specified
+        if (step["maneuver"].is<String>()) {
+          maneuver = step["maneuver"].as<const char*>();
         }
+        
+        // Get distance text
+        const char* distanceText = "";
+        if (step["distance"]["text"].is<String>()) {
+          distanceText = step["distance"]["text"].as<const char*>();
+        }
+        
+        // Get html_instructions
+        const char* htmlInstructions = "";
+        if (step["html_instructions"].is<String>()) {
+          htmlInstructions = step["html_instructions"].as<const char*>();
+        }
+        
+        // Log extracted data
+        Serial.print("STEP ");
+        Serial.print(current_step);
+        Serial.print(" -> ");
+        Serial.print(maneuver);
+        Serial.print(" | ");
+        Serial.print(distanceText);
+        Serial.print(" | ");
+        Serial.println(stripHtmlTags(htmlInstructions));
+        
+        // Render to OLED using quadrant layout with full navigation info
+        drawNavFromApi(maneuver, distanceText, htmlInstructions, BlackImage);
+        OLED_1IN51_Display(BlackImage);
+        
         current_step++;
         navSteps.clear();
         jsonDoc.clear();
