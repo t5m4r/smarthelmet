@@ -15,7 +15,7 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# Allow only one concurrent deployment, skipping runs queued between the run-in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
@@ -28,17 +28,30 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    # Move the secret to job-level env (uppercase) so steps can access it without embedding it in the repo
+    env:
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        env:
-          google_maps_api_key : ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      - name: Inject Google Maps API key
+        # Replace the placeholder in index.html with the secret at runtime. This keeps the secret out of the repo.
+        run: |
+          python - <<'PY'
+          import os
+          p='index.html'
+          with open(p,'r',encoding='utf-8') as f:
+              s = f.read()
+          s = s.replace('INSERT_GOOGLE_MAPS_KEY_HERE', os.environ.get('GOOGLE_MAPS_API_KEY',''))
+          with open(p,'w',encoding='utf-8') as f:
+              f.write(s)
+          PY
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
+          # Upload entire repository (or change to your build output directory)
           path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
