@@ -629,7 +629,7 @@ parameter:
 ******************************************************************************/
 void Paint_DrawString_CN(UWORD Xstart, UWORD Ystart, const char * pString, cFONT* font, UWORD Color_Background, UWORD Color_Foreground)
 {
- const /*unsigned*/ char* p_text = pString;
+ const unsigned char* p_text = reinterpret_cast<const unsigned char*>(pString);
 
   int refcolumn = Xstart;
   int i, j, Num;
