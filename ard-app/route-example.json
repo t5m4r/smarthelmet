@@ -1,0 +1,486 @@
+{
+   "geocoded_waypoints" : 
+   [
+      {
+         "geocoder_status" : "OK",
+         "place_id" : "ChIJzaJ-G5oTrjsRExa5an0TdNo",
+         "types" : 
+         [
+            "establishment",
+            "point_of_interest"
+         ]
+      },
+      {
+         "geocoder_status" : "OK",
+         "place_id" : "ChIJGZyjFrsVrjsRI0PqLwDXKk4",
+         "types" : 
+         [
+            "establishment",
+            "point_of_interest"
+         ]
+      }
+   ],
+   "routes" : 
+   [
+      {
+         "bounds" : 
+         {
+            "northeast" : 
+            {
+               "lat" : 12.9387476,
+               "lng" : 77.66176999999999
+            },
+            "southwest" : 
+            {
+               "lat" : 12.9161279,
+               "lng" : 77.6335715
+            }
+         },
+         "copyrights" : "Powered by Google, ©2026 Google",
+         "legs" : 
+         [
+            {
+               "distance" : 
+               {
+                  "text" : "7.2 km",
+                  "value" : 7227
+               },
+               "duration" : 
+               {
+                  "text" : "26 mins",
+                  "value" : 1543
+               },
+               "end_address" : "1068 (2nd Floor, 24th Main Rd, 1st Sector, HSR Layout, Bengaluru, Karnataka 560102, India",
+               "end_location" : 
+               {
+                  "lat" : 12.9180067,
+                  "lng" : 77.6492521
+               },
+               "start_address" : "WMP8+6GR, Belur Nagasandra, Bellandur, Bengaluru, Karnataka 560037, India",
+               "start_location" : 
+               {
+                  "lat" : 12.9387476,
+                  "lng" : 77.66176999999999
+               },
+               "steps" : 
+               [
+                  {
+                     "distance" : 
+                     {
+                        "text" : "2.3 km",
+                        "value" : 2348
+                     },
+                     "duration" : 
+                     {
+                        "text" : "9 mins",
+                        "value" : 547
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9294117,
+                        "lng" : 77.6430446
+                     },
+                     "html_instructions" : "Head \u003cb\u003esouthwest\u003c/b\u003e\u003cdiv style=\"font-size:0.9em\"\u003eRestricted usage road\u003c/div\u003e",
+                     "polyline" : 
+                     {
+                        "points" : "eb~mAai_yMDBNLVXJJNRDF`@j@R`@DFBBNTVd@PZN\\P\\NZFRRf@Pl@Rf@Lb@JXNf@pAfCHN@BTf@vApCR^FLh@tANf@Th@Tf@BFP^v@|Ab@~@HRpAjCh@hAJRz@lAFLJT@T?XAd@BvAJt@H`@?B\\nBVfC?BNpAJbAD`AB`@?@PxAJh@N^DJp@dBr@vBRj@L`@Tt@d@zAFXJ\\@BJ`@FNXtBRrADRDHDHNLRPv@h@hAt@dCrAl@XNB"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9387476,
+                        "lng" : 77.66176999999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.6 km",
+                        "value" : 552
+                     },
+                     "duration" : 
+                     {
+                        "text" : "3 mins",
+                        "value" : 171
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9307906,
+                        "lng" : 77.63827499999999
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eright\u003c/b\u003e",
+                     "maneuver" : "turn-right",
+                     "polyline" : 
+                     {
+                        "points" : "yg|mA_t{xMIv@I`@ENIZS`@MNITENGXAHCHAL?J?DAPAPAJ?JBNBN@LBV?L?H@L?LAPCH?@GRELA@GNELAHI\\ALCHEHCHELCFSt@ELCHCJCJAFAHAFAF?@ABEJAFEHCFEFSXEHCHAHAFAFAH"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9294117,
+                        "lng" : 77.6430446
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "76 m",
+                        "value" : 76
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 20
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9301855,
+                        "lng" : 77.63795809999999
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eleft\u003c/b\u003e toward \u003cb\u003e2nd Main Rd\u003c/b\u003e",
+                     "maneuver" : "turn-left",
+                     "polyline" : 
+                     {
+                        "points" : "mp|mAevzxMLBFBF@XHPHRJXR"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9307906,
+                        "lng" : 77.63827499999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.5 km",
+                        "value" : 453
+                     },
+                     "duration" : 
+                     {
+                        "text" : "2 mins",
+                        "value" : 94
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9321335,
+                        "lng" : 77.6342944
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eright\u003c/b\u003e onto \u003cb\u003e2nd Main Rd\u003c/b\u003e",
+                     "maneuver" : "turn-right",
+                     "polyline" : 
+                     {
+                        "points" : "ul|mAgtzxMMVGL]z@O^KVWj@[n@Uh@MVQZg@rAK\\O\\Yr@Q\\s@~AWh@M\\"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9301855,
+                        "lng" : 77.63795809999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.1 km",
+                        "value" : 120
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 28
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9311353,
+                        "lng" : 77.63403559999999
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eleft\u003c/b\u003e toward \u003cb\u003e7th A Main Rd\u003c/b\u003e",
+                     "maneuver" : "turn-left",
+                     "polyline" : 
+                     {
+                        "points" : "yx|mAi}yxMzAp@JFZA`AE"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9321335,
+                        "lng" : 77.6342944
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.2 km",
+                        "value" : 153
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 35
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9298603,
+                        "lng" : 77.6335715
+                     },
+                     "html_instructions" : "Continue onto \u003cb\u003e7th A Main Rd\u003c/b\u003e",
+                     "polyline" : 
+                     {
+                        "points" : "sr|mAw{yxMNAF?D?D?D@D?JBJBJFJFJHHBNFz@VHBFBVJB?B@B?F@"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9311353,
+                        "lng" : 77.63403559999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.8 km",
+                        "value" : 775
+                     },
+                     "duration" : 
+                     {
+                        "text" : "3 mins",
+                        "value" : 161
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.925219,
+                        "lng" : 77.63740899999999
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eleft\u003c/b\u003e onto \u003cb\u003e1st Main Rd\u003c/b\u003e",
+                     "maneuver" : "turn-left",
+                     "polyline" : 
+                     {
+                        "points" : "sj|mAyxyxMDODORe@Pe@Ti@Pc@Ri@@EHEDIFOTi@|@eCd@uAJYPa@HQN[\\g@LQJKp@m@RSROj@i@BADAB?J?D?rBLj@DJ@xAPpBVN?"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9298603,
+                        "lng" : 77.6335715
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.3 km",
+                        "value" : 311
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 63
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9239313,
+                        "lng" : 77.6399455
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eleft\u003c/b\u003e onto \u003cb\u003eNH 44\u003c/b\u003e",
+                     "maneuver" : "turn-left",
+                     "polyline" : 
+                     {
+                        "points" : "sm{mAypzxMFQ?ABGBIBGBEJSHOVe@PYJSJMHMJSLYNc@FQBMHQJWH[J[@Ib@uA"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.925219,
+                        "lng" : 77.63740899999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.9 km",
+                        "value" : 909
+                     },
+                     "duration" : 
+                     {
+                        "text" : "2 mins",
+                        "value" : 145
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9161303,
+                        "lng" : 77.6382686
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eright\u003c/b\u003e onto \u003cb\u003e14th Main Rd\u003c/b\u003e/\u003cwbr/\u003e\u003cb\u003eAgara Lake Rd\u003c/b\u003e/\u003cwbr/\u003e\u003cb\u003eJakkasandra Cross Rd\u003c/b\u003e\u003cdiv style=\"font-size:0.9em\"\u003ePass by Greenview Medical Center - Best Multi Speciality Hospital | HSR Layout, Bangalore (on the right in 600m)\u003c/div\u003e",
+                     "maneuver" : "turn-right",
+                     "polyline" : 
+                     {
+                        "points" : "qe{mAu`{xMFSPFrCbAlBp@B@dAb@FBv@XdA`@LDnATxA^b@JTBp@HVBRBX@R@V@@?H?b@@b@@fBBdB@n@@b@@pAB^@lDF"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9239313,
+                        "lng" : 77.6399455
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.3 km",
+                        "value" : 331
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 52
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9175255,
+                        "lng" : 77.64088819999999
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eleft\u003c/b\u003e onto \u003cb\u003eService Rd\u003c/b\u003e",
+                     "maneuver" : "turn-left",
+                     "polyline" : 
+                     {
+                        "points" : "ytymAevzxM?U?KAQCKG]Mi@YkAUi@Sg@MS_AuAm@w@{@cA"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9161303,
+                        "lng" : 77.6382686
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "38 m",
+                        "value" : 38
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 5
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9177029,
+                        "lng" : 77.64118549999999
+                     },
+                     "html_instructions" : "Keep \u003cb\u003eright\u003c/b\u003e to continue toward \u003cb\u003e100 Feet Ring Rd\u003c/b\u003e/\u003cwbr/\u003e\u003cb\u003eOuter Ring Rd\u003c/b\u003e/\u003cwbr/\u003e\u003cb\u003eSrinagar - Kanyakumari Hwy\u003c/b\u003e",
+                     "maneuver" : "keep-right",
+                     "polyline" : 
+                     {
+                        "points" : "q}ymAqf{xMa@{@"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9175255,
+                        "lng" : 77.64088819999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.3 km",
+                        "value" : 314
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 35
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9198863,
+                        "lng" : 77.6430166
+                     },
+                     "html_instructions" : "Merge onto \u003cb\u003e100 Feet Ring Rd\u003c/b\u003e/\u003cwbr/\u003e\u003cb\u003eOuter Ring Rd\u003c/b\u003e/\u003cwbr/\u003e\u003cb\u003eSrinagar - Kanyakumari Hwy\u003c/b\u003e",
+                     "maneuver" : "merge",
+                     "polyline" : 
+                     {
+                        "points" : "s~ymAmh{xMwAwAe@c@g@c@q@e@i@]sDiC"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9177029,
+                        "lng" : 77.64118549999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.7 km",
+                        "value" : 684
+                     },
+                     "duration" : 
+                     {
+                        "text" : "2 mins",
+                        "value" : 148
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9194723,
+                        "lng" : 77.64927279999999
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eright\u003c/b\u003e onto \u003cb\u003e7th Cross Rd\u003c/b\u003e\u003cdiv style=\"font-size:0.9em\"\u003ePass by Top one car accessories (on the right)\u003c/div\u003e",
+                     "maneuver" : "turn-right",
+                     "polyline" : 
+                     {
+                        "points" : "ilzmA{s{xMLS@QHYBM@K@I@O?SBc@@cAB[?m@@QB_A@IBuARsF@s@?o@LiBBw@AkAA_AIoB"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9198863,
+                        "lng" : 77.6430166
+                     },
+                     "travel_mode" : "DRIVING"
+                  },
+                  {
+                     "distance" : 
+                     {
+                        "text" : "0.2 km",
+                        "value" : 163
+                     },
+                     "duration" : 
+                     {
+                        "text" : "1 min",
+                        "value" : 39
+                     },
+                     "end_location" : 
+                     {
+                        "lat" : 12.9180067,
+                        "lng" : 77.6492521
+                     },
+                     "html_instructions" : "Turn \u003cb\u003eright\u003c/b\u003e after Mansi Sarees &amp; Kids Wear (on the right)\u003cdiv style=\"font-size:0.9em\"\u003ePass by the pharmacy (on the right)\u003c/div\u003e\u003cdiv style=\"font-size:0.9em\"\u003eDestination will be on the right\u003c/div\u003e",
+                     "maneuver" : "turn-right",
+                     "polyline" : 
+                     {
+                        "points" : "uizmA}z|xMzACF?l@?F?`@@Z@`@@@?b@@B?"
+                     },
+                     "start_location" : 
+                     {
+                        "lat" : 12.9194723,
+                        "lng" : 77.64927279999999
+                     },
+                     "travel_mode" : "DRIVING"
+                  }
+               ],
+               "traffic_speed_entry" : [],
+               "via_waypoint" : []
+            }
+         ],
+         "overview_polyline" : 
+         {
+            "points" : "eb~mAai_yMx@v@TZt@lAp@fAbArBjBvFrBbEjBpDp@bBd@pAXn@vBpEzBtEfA`BRb@@n@@|BTvA\\rBVjCZtCHbBPzAZhAv@pBfAbDpAlE`@rAl@hEJ\\TVjAz@nEhCl@XNBSxAOj@a@p@Od@Oz@Ct@AVF^Dd@?V@ZEZOd@M\\Kf@Oj@o@zBG`@IXOXYb@ERCNAHLBNDj@Rl@^Ud@qA~CqAlC}AbEkBdEfBx@|AGb@Ab@Hl@\\|Af@b@LF@DOXu@lA}CJKLYdC_HZs@l@cA~A_B~@y@HChCLbGp@N?FQBIVk@~@cBT[Xm@d@uAb@yAj@iBdDjA~DzA|Bz@|AZ|Bj@fALxAJfABpFFdEHlDF?UA]Ki@g@uBi@qAmAiBiB{Ba@{@wAwAmAgA{AcAsDiCLSJk@Hs@HwCFiCViI@cBPaDCkCIoBzACt@?fBDh@@"
+         },
+         "summary" : "14th Main Rd/Agara Lake Rd/Jakkasandra Cross Rd",
+         "warnings" : [],
+         "waypoint_order" : []
+      }
+   ],
+   "status" : "OK"
+}
