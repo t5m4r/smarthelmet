@@ -10,6 +10,14 @@ const GEOLOCATION_OPTIONS = {
   maximumAge: 30000
 };
 
+// ============ SMART THROTTLE CONFIGURATION ============
+// Controls when GPS position updates are sent to the Arduino via BLE.
+// Both conditions must be met before a BLE write occurs.
+const GPS_BLE_THROTTLE = {
+  MIN_DISTANCE_METERS: 25,    // Minimum distance moved since last BLE send (meters)
+  MIN_TIME_MS: 3000           // Minimum time since last BLE send (milliseconds)
+};
+
 // Recent places localStorage config
 const RECENT_INDEX_KEY = 'hs_recent_place_ids';
 const RECENT_MAX = 8;
@@ -26,6 +34,88 @@ let isTrackingGpsForOrigin = true; // Default to tracking GPS
 let lastProcessedGeoTimestamp = 0;
 let placesAutocompleteElement = null;
 let selectedPlace = null; // Stores the currently selected place from autocomplete
+
+// Smart throttle state for continuous BLE GPS updates
+let lastBleSendTimestamp = 0;
+let lastBleSendLat = null;
+let lastBleSendLng = null;
+
+// ============ Haversine Distance Calculation ============
+
+/**
+ * Calculate distance between two GPS coordinates using the Haversine formula.
+ * @param {number} lat1 - Latitude of first point (degrees)
+ * @param {number} lng1 - Longitude of first point (degrees)
+ * @param {number} lat2 - Latitude of second point (degrees)
+ * @param {number} lng2 - Longitude of second point (degrees)
+ * @returns {number} Distance in meters
+ */
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // Earth's radius in meters
+  const toRad = (deg) => deg * (Math.PI / 180);
+  
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  
+  return R * c;
+}
+
+/**
+ * Check smart throttle conditions and send GPS to Arduino via BLE if thresholds met.
+ * Requires: BLE connected, navOriginCharacteristic available, GPS tracking enabled.
+ * @param {number} latitude - Current GPS latitude
+ * @param {number} longitude - Current GPS longitude
+ */
+async function maybeSendGpsToBle(latitude, longitude) {
+  // Guard: Must have BLE connection and origin characteristic
+  if (!activeDevice?.gatt?.connected || !navOriginCharacteristic) {
+    return;
+  }
+  
+  // Guard: GPS tracking toggle must be enabled
+  if (!isTrackingGpsForOrigin) {
+    return;
+  }
+  
+  const now = Date.now();
+  const timeSinceLastSend = now - lastBleSendTimestamp;
+  
+  // Time threshold check
+  if (timeSinceLastSend < GPS_BLE_THROTTLE.MIN_TIME_MS) {
+    return;
+  }
+  
+  // Distance threshold check (skip if first send)
+  if (lastBleSendLat !== null && lastBleSendLng !== null) {
+    const distance = haversineDistance(lastBleSendLat, lastBleSendLng, latitude, longitude);
+    if (distance < GPS_BLE_THROTTLE.MIN_DISTANCE_METERS) {
+      return;
+    }
+  }
+  
+  // Thresholds met - send GPS to Arduino via BLE
+  const payload = latitude.toFixed(6) + ',' + longitude.toFixed(6);
+  try {
+    // Send origin coordinates
+    await navOriginCharacteristic.writeValueWithoutResponse(textEncoder.encode(payload));
+    
+    // Send command to notify Arduino that origin moved
+    if (commandCharacteristic) {
+      await commandCharacteristic.writeValueWithoutResponse(textEncoder.encode('NAV_ORIGIN_MOVED'));
+    }
+    
+    lastBleSendTimestamp = now;
+    lastBleSendLat = latitude;
+    lastBleSendLng = longitude;
+    log('[A→H] Origin: ' + payload + ' + NAV_ORIGIN_MOVED');
+  } catch (err) {
+    log('[A→H] Argh! BLE origin write failed: ' + err);
+  }
+}
 
 // ============ Recent Places localStorage Helpers ============
 
@@ -164,7 +254,7 @@ function clearSelectedDestination() {
 async function initPlacesAutocomplete() {
   const container = document.getElementById('autocompleteContainer');
   if (!container) {
-    log('Autocomplete container not found');
+    log('[A] Autocomplete container not found');
     return;
   }
 
@@ -186,7 +276,7 @@ async function initPlacesAutocomplete() {
           center: { lat, lng },
           radius: 5000
         };
-        log('Autocomplete locationBias set to GPS: ' + lat.toFixed(4) + ',' + lng.toFixed(4));
+        log('[A] Autocomplete locationBias set to GPS: ' + lat.toFixed(4) + ',' + lng.toFixed(4));
       }
     }
     
@@ -201,11 +291,11 @@ async function initPlacesAutocomplete() {
     placesAutocompleteElement.addEventListener('gmp-select', async (event) => {
       const place = event.place;
       if (!place || !place.id) {
-        log('No place selected');
+        log('[A] No place selected');
         return;
       }
       
-      log('Place selected: ' + place.id);
+      log('[A] Place selected: ' + place.id);
       
       // Fetch displayName and location for the selected place
       try {
@@ -215,7 +305,7 @@ async function initPlacesAutocomplete() {
         const lat = place.location?.lat();
         const lng = place.location?.lng();
         
-        log('Place details: ' + displayName + ' (' + (lat ? lat.toFixed(6) + ',' + lng.toFixed(6) : 'no coords') + ')');
+        log('[A] Place details: ' + displayName + ' (' + (lat ? lat.toFixed(6) + ',' + lng.toFixed(6) : 'no coords') + ')');
         
         // Update hidden fields
         const navDestInput = document.getElementById('navDestInput');
@@ -247,14 +337,14 @@ async function initPlacesAutocomplete() {
         updateSendButtonState();
         setNavStatus('');
       } catch (err) {
-        log('Argh! Failed to fetch place details: ' + err);
+        log('[A] Argh! Failed to fetch place details: ' + err);
         setNavStatus('Could not load place details');
       }
     });
     
-    log('Places Autocomplete initialized');
+    log('[A] Places Autocomplete initialized');
   } catch (error) {
-    log('Argh! Places UI Kit failed to load: ' + error);
+    log('[A] Argh! Places UI Kit failed to load: ' + error);
     // Fallback: show a plain text input
     container.innerHTML = '<input type="text" id="navDestFallback" class="form-control form-control-lg" placeholder="Enter address (Places API unavailable)">';
     const fallbackInput = document.getElementById('navDestFallback');
@@ -415,15 +505,15 @@ function populateBluetoothDevices() {
   
   // Check if getDevices() is available (requires Chrome flag)
   if (!navigator.bluetooth || typeof navigator.bluetooth.getDevices !== 'function') {
-    log('Note: getDevices() not available. Enable chrome://flags/#enable-web-bluetooth-new-permissions-backend');
+    log('[A] Note: getDevices() not available. Enable chrome://flags/#enable-web-bluetooth-new-permissions-backend');
     updateUiState();
     return;
   }
   
-  log('Getting existing permitted Bluetooth devices...');
+  log('[A] Getting existing permitted Bluetooth devices...');
   navigator.bluetooth.getDevices()
   .then(devices => {
-    log('> Got ' + devices.length + ' Bluetooth devices.');
+    log('[A] Got ' + devices.length + ' Bluetooth devices.');
     devicesSelect.textContent = '';
     for (const device of devices) {
       const option = document.createElement('option');
@@ -434,7 +524,7 @@ function populateBluetoothDevices() {
     updateUiState();
   })
   .catch(error => {
-    log('Argh! ' + error);
+    log('[A] Argh! ' + error);
     updateUiState();
   });
 }
@@ -446,13 +536,13 @@ function getBleConfig() {
   const navOriginUuid = DEFAULT_NAV_ORIGIN_CHARACTERISTIC_UUID.toLowerCase();
   const navDestUuid = DEFAULT_NAV_DEST_CHARACTERISTIC_UUID.toLowerCase();
   if (serviceUuid !== DEFAULT_SERVICE_UUID.toLowerCase()) {
-    log('Using custom Service UUID: ' + serviceUuid);
+    log('[A] Using custom Service UUID: ' + serviceUuid);
   }
   return { serviceUuid, commandUuid, navOriginUuid, navDestUuid };
 }
 
 function onRequestBluetoothDeviceButtonClick() {
-  log('Scanning for T5M4R-ARD peripheral or device with UART service...');
+  log('[A] Scanning for T5M4R-ARD peripheral or device with UART service...');
   const { serviceUuid } = getBleConfig();
 
   const filters = [
@@ -465,16 +555,16 @@ function onRequestBluetoothDeviceButtonClick() {
 
   navigator.bluetooth.requestDevice({ filters })
   .then(device => {
-    log('> Requested ' + (device.name || 'unnamed device') + ' (' + device.id + ')');
+    log('[A] Requested ' + (device.name || 'unnamed device') + ' (' + device.id + ')');
     device.addEventListener('gattserverdisconnected', handleDisconnection);
     activeDevice = device;
     populateBluetoothDevices();
   })
   .catch(error => {
     if (error.name === 'NotFoundError') {
-      log('No device selected. Confirm the Arduino peripheral is advertising and in range.');
+      log('[A] No device selected. Confirm the Arduino peripheral is advertising and in range.');
     } else {
-      log('Argh! ' + error);
+      log('[A] Argh! ' + error);
     }
   })
   .finally(() => {
@@ -491,38 +581,38 @@ function onForgetBluetoothDeviceButtonClick() {
     if (!device) {
       throw new Error('No Bluetooth device to forget');
     }
-    log('Forgetting ' + device.name + ' Bluetooth device...');
+    log('[A] Forgetting ' + device.name + ' Bluetooth device...');
     return device.forget().then(() => ({ deviceIdToForget }));
   })
   .then(({ deviceIdToForget }) => {
-    log('  > Bluetooth device has been forgotten.');
+    log('[A] Bluetooth device has been forgotten.');
     if (activeDevice && activeDevice.id === deviceIdToForget) {
       resetConnectionState();
     }
     populateBluetoothDevices();
   })
   .catch(error => {
-    log('Argh! ' + error);
+    log('[A] Argh! ' + error);
     updateUiState();
   });
 }
 
 async function logGattServerDetails(server, primaryServiceUuid) {
   const services = await server.getPrimaryServices();
-  log('GATT Server: found ' + services.length + ' primary service(s).');
+  log('[A] GATT Server: found ' + services.length + ' primary service(s).');
 
   for (const service of services) {
     const isPrimary = (service.isPrimary !== undefined) ? service.isPrimary : 'n/a';
     const isUartService = service.uuid.toLowerCase() === primaryServiceUuid.toLowerCase();
 
-    log('Service: ' + service.uuid + ' (primary: ' + isPrimary + ')' +
+    log('[A] Service: ' + service.uuid + ' (primary: ' + isPrimary + ')' +
         (isUartService ? ' [UART SERVICE]' : ''));
 
     const characteristics = await service.getCharacteristics();
-    log('  Characteristics: ' + characteristics.length);
+    log('[A]   Characteristics: ' + characteristics.length);
 
     for (const characteristic of characteristics) {
-      log('   - Characteristic: ' + characteristic.uuid);
+      log('[A]    - Characteristic: ' + characteristic.uuid);
 
       const props = characteristic.properties;
       const propNames = [
@@ -532,7 +622,7 @@ async function logGattServerDetails(server, primaryServiceUuid) {
       ];
 
       const enabledProps = propNames.filter(name => props[name]);
-      log('      Properties: ' + (enabledProps.length ? enabledProps.join(', ') : 'none'));
+      log('[A]       Properties: ' + (enabledProps.length ? enabledProps.join(', ') : 'none'));
     }
   }
 }
@@ -561,7 +651,7 @@ async function connectSelectedBluetoothDevice() {
   }
   if (device.gatt.connected && commandCharacteristic) {
     activeDevice = device;
-    log('Already connected to peripheral: ' + (device.name || device.id));
+    log('[A] Already connected to peripheral: ' + (device.name || device.id));
     updateUiState();
     return;
   }
@@ -571,24 +661,24 @@ async function connectSelectedBluetoothDevice() {
     activeDevice = device;
     activeDevice.removeEventListener('gattserverdisconnected', handleDisconnection);
     activeDevice.addEventListener('gattserverdisconnected', handleDisconnection);
-    log('Connecting to ' + (device.name || device.id) + '...');
+    log('[A] Connecting to ' + (device.name || device.id) + '...');
     const server = await device.gatt.connect();
-    log('  GATT server connected, discovering services...');
+    log('[A] GATT server connected, discovering services...');
     
-    log('  Looking for service: ' + serviceUuid);
+    log('[A] Looking for service: ' + serviceUuid);
     const service = await server.getPrimaryService(serviceUuid);
-    log('  Found primary service: ' + service.uuid);
+    log('[A] Found primary service: ' + service.uuid);
     
     commandCharacteristic = await service.getCharacteristic(commandUuid);
-    log('  Found Command characteristic: ' + commandCharacteristic.uuid);
+    log('[A] Found Command characteristic: ' + commandCharacteristic.uuid);
     
     navOriginCharacteristic = await service.getCharacteristic(navOriginUuid);
-    log('  Found NavOrigin characteristic: ' + navOriginCharacteristic.uuid);
+    log('[A] Found NavOrigin characteristic: ' + navOriginCharacteristic.uuid);
     
     navDestCharacteristic = await service.getCharacteristic(navDestUuid);
-    log('  Found NavDestination characteristic: ' + navDestCharacteristic.uuid);
+    log('[A] Found NavDestination characteristic: ' + navDestCharacteristic.uuid);
     
-    log('Connected to peripheral: ' + (device.name || device.id));
+    log('[A] Connected to peripheral: ' + (device.name || device.id));
     await logGattServerDetails(server, serviceUuid);
   } finally {
     isConnecting = false;
@@ -607,7 +697,7 @@ async function onSendCommandButtonClick() {
     throw new Error('Command characteristic not available.');
   }
   await commandCharacteristic.writeValue(textEncoder.encode(command));
-  log('>> Command: ' + command);
+  log('[A→H] Command: ' + command);
 }
 
 async function onSendNavigationButtonClick() {
@@ -637,10 +727,10 @@ async function onSendNavigationButtonClick() {
   }
   
   await navOriginCharacteristic.writeValue(textEncoder.encode(origin));
-  log('>> Origin: ' + origin);
+  log('[A→H] Origin: ' + origin);
   
   await navDestCharacteristic.writeValue(textEncoder.encode(destination));
-  log('>> Destination: ' + destination);
+  log('[A→H] Destination: ' + destination);
   
   // Save to recents if using fallback text input (Places Autocomplete saves on selection)
   if (!selectedPlace || !selectedPlace.id) {
@@ -670,7 +760,7 @@ async function onSendNavigationButtonClick() {
 
 function handleDisconnection(event) {
   const device = event.target;
-  log('> ' + (device.name || device.id) + ' disconnected.');
+  log('[H→A] ' + (device.name || device.id) + ' disconnected.');
   resetConnectionState();
 }
 
@@ -740,11 +830,14 @@ function updateGeolocationCoordinates(latitude, longitude) {
       radius: 5000
     };
   }
+  
+  // Smart throttle: send GPS to Arduino via BLE if thresholds met
+  maybeSendGpsToBle(latitude, longitude);
 }
 
 function startGeolocationWatch() {
   if (!navigator.geolocation) {
-    log('Geolocation API not available.');
+    log('[A] Geolocation API not available.');
     return;
   }
 
@@ -766,16 +859,16 @@ function startGeolocationWatch() {
       
       // Skip positions that are too stale (older than maximumAge + 10s grace period)
       if (ageMilliseconds > GEOLOCATION_OPTIONS.maximumAge + 10000) {
-        log('Skipping stale geolocation fix (' + ageMilliseconds + 'ms old)');
+        log('[A] Skipping stale geolocation fix (' + ageMilliseconds + 'ms old)');
         return;
       }
       
       lastProcessedGeoTimestamp = position.timestamp;
       updateGeolocationCoordinates(latitude, longitude);
-      log('Geolocation updated: ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6) + ' (' + ageMilliseconds + 'ms ago)');
+      log('[A] Geolocation updated: ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6) + ' (' + ageMilliseconds + 'ms ago)');
     },
     (error) => {
-      log('Geolocation watch error: ' + error.message);
+      log('[A] Geolocation watch error: ' + error.message);
     },
     GEOLOCATION_OPTIONS
   );
@@ -792,7 +885,7 @@ async function requeryGeolocationPermission() {
     }
     return status;
   } catch (err) {
-    log('Argh! ' + err);
+    log('[A] Argh! ' + err);
     updateGeolocationPermissionIndicator('unknown');
   }
 }
@@ -820,7 +913,7 @@ function startPermissionPoll(maxAttempts = 6, intervalMs = 1000) {
 
 async function requestGeolocationPermissionOnLoad() {
   if (!navigator.permissions || !navigator.geolocation) {
-    log('Geolocation or Permissions API not available in this browser.');
+    log('[A] Geolocation or Permissions API not available in this browser.');
     await updateGeolocationPermissionIndicator('unavailable');
     return;
   }
@@ -831,7 +924,7 @@ async function requestGeolocationPermissionOnLoad() {
     // Attach onchange where supported
     try {
       status.onchange = () => {
-        log('Geolocation permission changed to ' + status.state);
+        log('[A] Geolocation permission changed to ' + status.state);
         updateGeolocationPermissionIndicator(status.state);
         if (status.state === 'granted') {
           startGeolocationWatch();
@@ -853,13 +946,13 @@ async function requestGeolocationPermissionOnLoad() {
 
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          log('Geolocation allowed. coords: ' + pos.coords.latitude + ',' + pos.coords.longitude);
+          log('[A] Geolocation allowed. coords: ' + pos.coords.latitude + ',' + pos.coords.longitude);
           updateGeolocationCoordinates(pos.coords.latitude, pos.coords.longitude);
           requeryGeolocationPermission();
           if (pollId) clearInterval(pollId);
         },
         (err) => {
-          log('Geolocation error: ' + err.message);
+          log('[A] Geolocation error: ' + err.message);
           requeryGeolocationPermission();
           if (pollId) clearInterval(pollId);
         },
@@ -895,7 +988,7 @@ async function requestGeolocationPermissionOnLoad() {
       }
     });
   } catch (error) {
-    log('Argh! ' + error);
+    log('[A] Argh! ' + error);
     updateGeolocationPermissionIndicator('unknown');
   }
 }
@@ -925,11 +1018,11 @@ window.onload = () => {
       const originSummary = document.getElementById('originSummaryText');
       
       if (isTrackingGpsForOrigin) {
-        log('GPS tracking for Origin enabled.');
+        log('[A] GPS tracking for Origin enabled.');
         navOriginInput.setAttribute('readonly', 'readonly');
         if (originSummary) originSummary.textContent = 'Current location';
       } else {
-        log('GPS tracking for Origin disabled.');
+        log('[A] GPS tracking for Origin disabled.');
         navOriginInput.value = '';
         navOriginInput.removeAttribute('readonly');
         if (originSummary) originSummary.textContent = 'Manual entry';
