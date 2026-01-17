@@ -35,7 +35,7 @@ void oled_setup(bool isLandscape) {
   }
   
   // Set rotation based on orientation: 270 for landscape (128x64), 0 for portrait (64x128)
-  UWORD rotation = isLandscape ? 270 : 0;
+  UWORD rotation = isLandscape ? 270 : 180;
   Serial.print("Paint_NewImage with rotation=");
   Serial.println(rotation);
   Paint_NewImage(BlackImage, OLED_1IN51_WIDTH, OLED_1IN51_HEIGHT, rotation, BLACK);
