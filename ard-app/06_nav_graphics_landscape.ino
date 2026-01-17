@@ -68,6 +68,13 @@ extern const char* NAV_ROW2_COMPACT[];
 extern const char* NAV_LABELS[];
 extern const char* NAV_NAMES[];
 
+// Status screen ASCII art
+extern const char* NAMASTE_ROW1;
+extern const char* NAMASTE_ROW2;
+extern const char* COMPLETE_ROW1;
+extern const char* COMPLETE_ROW2;
+extern const char* COMPLETE_ROW3;
+
 // =============================================================================
 // LANDSCAPE MODE HELPER FUNCTIONS
 // =============================================================================
@@ -234,6 +241,84 @@ void landscapeDrawNavFromApi(
 }
 
 // =============================================================================
+// LANDSCAPE STATUS SCREENS
+// =============================================================================
+
+// Welcome screen: Namaste hands + "Waiting" message
+void landscapeDrawWelcomeScreen(UBYTE* image) {
+  if (image == NULL) {
+    Serial.println("[NAV] ERROR: image buffer is NULL!");
+    return;
+  }
+  
+  Paint_SelectImage(image);
+  Paint_Clear(BLACK);
+  
+  // Namaste ASCII art centered in top half
+  UWORD artX = landscapeCenterX(NAMASTE_ROW1, FONT16_WIDTH);
+  Paint_DrawString_EN(artX, 8, NAMASTE_ROW1, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 26, NAMASTE_ROW2, &Font16, WHITE, WHITE);
+  
+  // "Waiting" text in bottom half
+  const char* msg = "Waiting...";
+  UWORD msgX = landscapeCenterX(msg, FONT12_WIDTH);
+  Paint_DrawString_EN(msgX, 48, msg, &Font12, WHITE, WHITE);
+  
+  Serial.println("[NAV] landscapeDrawWelcomeScreen");
+}
+
+// Destination prompt screen: "What's your Destination?" after BLE pairing
+void landscapeDrawDestinationPrompt(UBYTE* image) {
+  if (image == NULL) {
+    Serial.println("[NAV] ERROR: image buffer is NULL!");
+    return;
+  }
+  
+  Paint_SelectImage(image);
+  Paint_Clear(BLACK);
+  
+  // Three lines centered
+  const char* line1 = "What's";
+  const char* line2 = "your";
+  const char* line3 = "Destination?";
+  
+  UWORD x1 = landscapeCenterX(line1, FONT16_WIDTH);
+  UWORD x2 = landscapeCenterX(line2, FONT16_WIDTH);
+  UWORD x3 = landscapeCenterX(line3, FONT12_WIDTH);
+  
+  Paint_DrawString_EN(x1, 4, line1, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(x2, 24, line2, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(x3, 46, line3, &Font12, WHITE, WHITE);
+  
+  Serial.println("[NAV] landscapeDrawDestinationPrompt");
+}
+
+// Navigation complete screen: Checkmark + DONE + "You have arrived!" message
+void landscapeDrawCompleteScreen(UBYTE* image) {
+  if (image == NULL) {
+    Serial.println("[NAV] ERROR: image buffer is NULL!");
+    return;
+  }
+  
+  Paint_SelectImage(image);
+  Paint_Clear(BLACK);
+  
+  // Checkmark (tick) ASCII art + DONE centered
+  UWORD artX = landscapeCenterX(COMPLETE_ROW1, FONT16_WIDTH);
+  UWORD doneX = landscapeCenterX(COMPLETE_ROW3, FONT12_WIDTH);
+  Paint_DrawString_EN(artX, 2, COMPLETE_ROW1, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 18, COMPLETE_ROW2, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(doneX, 36, COMPLETE_ROW3, &Font12, WHITE, WHITE);
+  
+  // "You have arrived!" text at bottom
+  const char* msg = "You have arrived!";
+  UWORD msgX = landscapeCenterX(msg, FONT8_WIDTH);
+  Paint_DrawString_EN(msgX, 52, msg, &Font8, WHITE, WHITE);
+  
+  Serial.println("[NAV] landscapeDrawCompleteScreen");
+}
+
+// =============================================================================
 // ORIENTATION-AWARE WRAPPER FUNCTIONS
 // =============================================================================
 // Pass isLandscape=true for 128x64, false for 64x128
@@ -274,5 +359,32 @@ void drawNavFromApi(
     landscapeDrawNavFromApi(maneuver, distanceText, htmlInstructions, image);
   } else {
     portraitDrawNavFromApi(maneuver, distanceText, htmlInstructions, image);
+  }
+}
+
+// Welcome screen wrapper
+void drawWelcomeScreen(UBYTE* image, bool isLandscape) {
+  if (isLandscape) {
+    landscapeDrawWelcomeScreen(image);
+  } else {
+    portraitDrawWelcomeScreen(image);
+  }
+}
+
+// Navigation complete screen wrapper
+void drawCompleteScreen(UBYTE* image, bool isLandscape) {
+  if (isLandscape) {
+    landscapeDrawCompleteScreen(image);
+  } else {
+    portraitDrawCompleteScreen(image);
+  }
+}
+
+// Destination prompt screen wrapper
+void drawDestinationPrompt(UBYTE* image, bool isLandscape) {
+  if (isLandscape) {
+    landscapeDrawDestinationPrompt(image);
+  } else {
+    portraitDrawDestinationPrompt(image);
   }
 }

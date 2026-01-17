@@ -6,6 +6,10 @@ void blePeripheralConnectHandler(BLEDevice central) {
   Serial.println(central.address());
   headSenseState = HEADSENSE_WELCOME;
   prettyPrintHeadSenseState(headSenseState);
+  
+  // Show "What's your Destination?" prompt on OLED
+  drawDestinationPrompt(BlackImage, isLandscapeOLED);
+  OLED_1IN51_Display(BlackImage);
 }
 
 // Central in BLE-speak is usually the high-capacity smartphone

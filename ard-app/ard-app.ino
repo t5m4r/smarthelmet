@@ -112,6 +112,11 @@ void setup() {
     printWifiStatus();
   }
   oled_setup(isLandscapeOLED);
+  
+  // Show welcome screen after OLED init
+  drawWelcomeScreen(BlackImage, isLandscapeOLED);
+  OLED_1IN51_Display(BlackImage);
+  
   prettyPrintHeadSenseState(headSenseState);
 }
 
@@ -133,7 +138,14 @@ void loop() {
   // BT-LE end of repeat work
 
   if (headSenseState == HEADSENSE_TASKED_COMPLETE) {
-    //Serial.println("Directions COMPLETED :)");
+    // Show navigation complete screen (only once)
+    static bool completeScreenShown = false;
+    if (!completeScreenShown) {
+      drawCompleteScreen(BlackImage, isLandscapeOLED);
+      OLED_1IN51_Display(BlackImage);
+      completeScreenShown = true;
+      Serial.println("Navigation COMPLETED - showing arrival screen");
+    }
     return;
   }
 

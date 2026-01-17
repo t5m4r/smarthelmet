@@ -59,6 +59,13 @@ extern const char* NAV_ROW2_COMPACT[];
 extern const char* NAV_LABELS[];
 extern const char* NAV_NAMES[];
 
+// Status screen ASCII art (compact versions for portrait)
+extern const char* NAMASTE_ROW1_COMPACT;
+extern const char* NAMASTE_ROW2_COMPACT;
+extern const char* COMPLETE_ROW1_COMPACT;
+extern const char* COMPLETE_ROW2_COMPACT;
+extern const char* COMPLETE_ROW3_COMPACT;
+
 // =============================================================================
 // PORTRAIT MODE HELPER FUNCTIONS
 // =============================================================================
@@ -226,4 +233,82 @@ void portraitDrawNavFromApi(
   
   // Draw the portrait layout
   portraitDrawNavQuadrant(nav, dist.c_str(), line1, line2, image);
+}
+
+// =============================================================================
+// PORTRAIT STATUS SCREENS
+// =============================================================================
+
+// Welcome screen: Namaste hands + "Waiting" message
+void portraitDrawWelcomeScreen(UBYTE* image) {
+  if (image == NULL) {
+    Serial.println("[NAV] ERROR: image buffer is NULL!");
+    return;
+  }
+  
+  Paint_SelectImage(image);
+  Paint_Clear(BLACK);
+  
+  // Namaste ASCII art centered in upper portion
+  UWORD artX = portraitCenterX(NAMASTE_ROW1_COMPACT, FONT16_WIDTH);
+  Paint_DrawString_EN(artX, 40, NAMASTE_ROW1_COMPACT, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 58, NAMASTE_ROW2_COMPACT, &Font16, WHITE, WHITE);
+  
+  // "Waiting" text below
+  const char* msg = "Waiting...";
+  UWORD msgX = portraitCenterX(msg, FONT8_WIDTH);
+  Paint_DrawString_EN(msgX, 90, msg, &Font8, WHITE, WHITE);
+  
+  Serial.println("[NAV] portraitDrawWelcomeScreen");
+}
+
+// Destination prompt screen: "What's your Destination?" after BLE pairing
+void portraitDrawDestinationPrompt(UBYTE* image) {
+  if (image == NULL) {
+    Serial.println("[NAV] ERROR: image buffer is NULL!");
+    return;
+  }
+  
+  Paint_SelectImage(image);
+  Paint_Clear(BLACK);
+  
+  // Three lines centered vertically
+  const char* line1 = "What's";
+  const char* line2 = "your";
+  const char* line3 = "Dest?";
+  
+  UWORD x1 = portraitCenterX(line1, FONT12_WIDTH);
+  UWORD x2 = portraitCenterX(line2, FONT12_WIDTH);
+  UWORD x3 = portraitCenterX(line3, FONT12_WIDTH);
+  
+  Paint_DrawString_EN(x1, 40, line1, &Font12, WHITE, WHITE);
+  Paint_DrawString_EN(x2, 58, line2, &Font12, WHITE, WHITE);
+  Paint_DrawString_EN(x3, 76, line3, &Font12, WHITE, WHITE);
+  
+  Serial.println("[NAV] portraitDrawDestinationPrompt");
+}
+
+// Navigation complete screen: Checkmark + DONE + "Arrived!" message
+void portraitDrawCompleteScreen(UBYTE* image) {
+  if (image == NULL) {
+    Serial.println("[NAV] ERROR: image buffer is NULL!");
+    return;
+  }
+  
+  Paint_SelectImage(image);
+  Paint_Clear(BLACK);
+  
+  // Checkmark (tick) ASCII art + DONE centered
+  UWORD artX = portraitCenterX(COMPLETE_ROW1_COMPACT, FONT16_WIDTH);
+  UWORD doneX = portraitCenterX(COMPLETE_ROW3_COMPACT, FONT12_WIDTH);
+  Paint_DrawString_EN(artX, 30, COMPLETE_ROW1_COMPACT, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 48, COMPLETE_ROW2_COMPACT, &Font16, WHITE, WHITE);
+  Paint_DrawString_EN(doneX, 68, COMPLETE_ROW3_COMPACT, &Font12, WHITE, WHITE);
+  
+  // "Arrived!" text below
+  const char* msg = "Arrived!";
+  UWORD msgX = portraitCenterX(msg, FONT8_WIDTH);
+  Paint_DrawString_EN(msgX, 90, msg, &Font8, WHITE, WHITE);
+  
+  Serial.println("[NAV] portraitDrawCompleteScreen");
 }

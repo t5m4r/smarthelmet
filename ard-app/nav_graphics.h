@@ -55,6 +55,11 @@ void landscapeDrawNavFromApi(
     UBYTE* image
 );
 
+// Status screens
+void landscapeDrawWelcomeScreen(UBYTE* image);
+void landscapeDrawDestinationPrompt(UBYTE* image);
+void landscapeDrawCompleteScreen(UBYTE* image);
+
 // =============================================================================
 // PORTRAIT MODE FUNCTIONS (08_nav_graphics_portrait.ino)
 // =============================================================================
@@ -72,6 +77,11 @@ void portraitDrawNavQuadrant(
     const char* instrLine2,
     UBYTE* image
 );
+
+// Status screens
+void portraitDrawWelcomeScreen(UBYTE* image);
+void portraitDrawDestinationPrompt(UBYTE* image);
+void portraitDrawCompleteScreen(UBYTE* image);
 
 // High-level: processes raw API data and renders portrait layout
 void portraitDrawNavFromApi(
@@ -96,5 +106,10 @@ void drawNavFromApi(
     UBYTE* image,
     bool isLandscape
 );
+
+// Status screen wrappers
+void drawWelcomeScreen(UBYTE* image, bool isLandscape);
+void drawDestinationPrompt(UBYTE* image, bool isLandscape);
+void drawCompleteScreen(UBYTE* image, bool isLandscape);
 
 #endif // NAV_GRAPHICS_H

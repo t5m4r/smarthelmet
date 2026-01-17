@@ -169,3 +169,23 @@ NavInstruction parseNavInstruction(const char* cmd) {
   Serial.println("' -> NAV_NONE");
   return NAV_NONE;
 }
+
+// =============================================================================
+// STATUS SCREEN ASCII ART
+// =============================================================================
+
+// Namaste hands-folded ASCII art (5 chars wide for portrait, 10 for landscape)
+const char* NAMASTE_ROW1_COMPACT = " _|_ ";
+const char* NAMASTE_ROW2_COMPACT = "(_|_)";
+
+const char* NAMASTE_ROW1 = "   _|_    ";
+const char* NAMASTE_ROW2 = "  (_|_)   ";
+
+// Navigation complete checkmark (tick) ASCII art
+const char* COMPLETE_ROW1_COMPACT = "   \\ ";
+const char* COMPLETE_ROW2_COMPACT = " \\/ ";
+const char* COMPLETE_ROW3_COMPACT = "DONE ";
+
+const char* COMPLETE_ROW1 = "      \\   ";
+const char* COMPLETE_ROW2 = "    \\/    ";
+const char* COMPLETE_ROW3 = "   DONE   ";
