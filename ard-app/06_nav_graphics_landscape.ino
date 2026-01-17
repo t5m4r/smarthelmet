@@ -69,8 +69,9 @@ extern const char* NAV_LABELS[];
 extern const char* NAV_NAMES[];
 
 // Status screen ASCII art
-extern const char* NAMASTE_ROW1;
-extern const char* NAMASTE_ROW2;
+extern const char* HEADSENSE_ROW1;
+extern const char* HEADSENSE_ROW2;
+extern const char* HEADSENSE_ROW3;
 extern const char* COMPLETE_ROW1;
 extern const char* COMPLETE_ROW2;
 extern const char* COMPLETE_ROW3;
@@ -254,15 +255,16 @@ void landscapeDrawWelcomeScreen(UBYTE* image) {
   Paint_SelectImage(image);
   Paint_Clear(BLACK);
   
-  // Namaste ASCII art centered in top half
-  UWORD artX = landscapeCenterX(NAMASTE_ROW1, FONT16_WIDTH);
-  Paint_DrawString_EN(artX, 8, NAMASTE_ROW1, &Font16, WHITE, WHITE);
-  Paint_DrawString_EN(artX, 26, NAMASTE_ROW2, &Font16, WHITE, WHITE);
+  // HeadSense ASCII art box - centered (Font12 for 14 chars)
+  UWORD brandX = landscapeCenterX(HEADSENSE_ROW1, FONT12_WIDTH);
+  Paint_DrawString_EN(brandX, 4, HEADSENSE_ROW1, &Font12, WHITE, WHITE);
+  Paint_DrawString_EN(brandX, 18, HEADSENSE_ROW2, &Font12, WHITE, WHITE);
+  Paint_DrawString_EN(brandX, 32, HEADSENSE_ROW3, &Font12, WHITE, WHITE);
   
-  // "Waiting" text in bottom half
-  const char* msg = "Waiting...";
-  UWORD msgX = landscapeCenterX(msg, FONT12_WIDTH);
-  Paint_DrawString_EN(msgX, 48, msg, &Font12, WHITE, WHITE);
+  // "Waiting.." text at bottom
+  const char* msg = "Waiting..";
+  UWORD msgX = landscapeCenterX(msg, FONT8_WIDTH);
+  Paint_DrawString_EN(msgX, 50, msg, &Font8, WHITE, WHITE);
   
   Serial.println("[NAV] landscapeDrawWelcomeScreen");
 }
@@ -293,7 +295,7 @@ void landscapeDrawDestinationPrompt(UBYTE* image) {
   Serial.println("[NAV] landscapeDrawDestinationPrompt");
 }
 
-// Navigation complete screen: Checkmark + DONE + "You have arrived!" message
+// Navigation complete screen: HeadSense branding + "Arrived!" message
 void landscapeDrawCompleteScreen(UBYTE* image) {
   if (image == NULL) {
     Serial.println("[NAV] ERROR: image buffer is NULL!");
@@ -303,17 +305,16 @@ void landscapeDrawCompleteScreen(UBYTE* image) {
   Paint_SelectImage(image);
   Paint_Clear(BLACK);
   
-  // Checkmark (tick) ASCII art + DONE centered
-  UWORD artX = landscapeCenterX(COMPLETE_ROW1, FONT16_WIDTH);
-  UWORD doneX = landscapeCenterX(COMPLETE_ROW3, FONT12_WIDTH);
-  Paint_DrawString_EN(artX, 2, COMPLETE_ROW1, &Font16, WHITE, WHITE);
-  Paint_DrawString_EN(artX, 18, COMPLETE_ROW2, &Font16, WHITE, WHITE);
-  Paint_DrawString_EN(doneX, 36, COMPLETE_ROW3, &Font12, WHITE, WHITE);
+  // HeadSense ASCII art box - centered (Font12 for 14 chars)
+  UWORD brandX = landscapeCenterX(HEADSENSE_ROW1, FONT12_WIDTH);
+  Paint_DrawString_EN(brandX, 4, HEADSENSE_ROW1, &Font12, WHITE, WHITE);
+  Paint_DrawString_EN(brandX, 18, HEADSENSE_ROW2, &Font12, WHITE, WHITE);
+  Paint_DrawString_EN(brandX, 32, HEADSENSE_ROW3, &Font12, WHITE, WHITE);
   
-  // "You have arrived!" text at bottom
-  const char* msg = "You have arrived!";
+  // "Arrived!" text at bottom
+  const char* msg = "Arrived!";
   UWORD msgX = landscapeCenterX(msg, FONT8_WIDTH);
-  Paint_DrawString_EN(msgX, 52, msg, &Font8, WHITE, WHITE);
+  Paint_DrawString_EN(msgX, 50, msg, &Font8, WHITE, WHITE);
   
   Serial.println("[NAV] landscapeDrawCompleteScreen");
 }

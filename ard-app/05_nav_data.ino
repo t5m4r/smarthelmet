@@ -174,12 +174,17 @@ NavInstruction parseNavInstruction(const char* cmd) {
 // STATUS SCREEN ASCII ART
 // =============================================================================
 
-// Namaste hands-folded ASCII art (5 chars wide for portrait, 10 for landscape)
-const char* NAMASTE_ROW1_COMPACT = " _|_ ";
-const char* NAMASTE_ROW2_COMPACT = "(_|_)";
+// HeadSense branding - ASCII art with techy/edgy look
+// Landscape: boxed "HeadSense" (fits 128px with Font12)
+const char* HEADSENSE_ROW1 = "/============\\";
+const char* HEADSENSE_ROW2 = "| HeadSense |";
+const char* HEADSENSE_ROW3 = "\\============/";
 
-const char* NAMASTE_ROW1 = "   _|_    ";
-const char* NAMASTE_ROW2 = "  (_|_)   ";
+// Portrait: stacked "Head" + "Sense" in box (fits 64px with Font8)
+const char* HEADSENSE_ROW1_COMPACT = "/======\\";
+const char* HEADSENSE_ROW2_COMPACT = "| Head |";
+const char* HEADSENSE_ROW3_COMPACT = "|Sense |";
+const char* HEADSENSE_ROW4_COMPACT = "\\======/";
 
 // Navigation complete checkmark (tick) ASCII art
 const char* COMPLETE_ROW1_COMPACT = "   \\ ";

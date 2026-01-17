@@ -114,23 +114,6 @@
       
       #log { max-height: 250px; overflow-y: auto; font-size: 0.8rem; }
       
-      /* Fix Bootstrap form-switch toggle appearance */
-      .form-switch .form-check-input {
-        width: 2.5em;
-        height: 1.25em;
-        background-color: #dee2e6;
-        border: none;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
-        background-position: left center;
-        transition: background-position 0.15s ease-in-out, background-color 0.15s ease-in-out;
-      }
-      .form-switch .form-check-input:checked {
-        background-color: var(--hs-primary);
-        background-position: right center;
-      }
-      .form-switch .form-check-input:focus {
-        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
-      }
       #installButton { display: none; }
       #installButton.show { display: inline-block; }
       
@@ -355,7 +338,7 @@
         <!-- Fast-forward controls -->
         <div class="d-flex align-items-center justify-content-between pt-2 border-top">
           <div class="form-check form-switch mb-0">
-            <input class="form-check-input" type="checkbox" role="switch" id="fastForwardToggle">
+            <input class="form-check-input" type="checkbox" id="fastForwardToggle">
             <label class="form-check-label small" for="fastForwardToggle">Fast-forward</label>
           </div>
           <div class="d-flex align-items-center gap-2">

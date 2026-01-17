@@ -60,8 +60,10 @@ extern const char* NAV_LABELS[];
 extern const char* NAV_NAMES[];
 
 // Status screen ASCII art (compact versions for portrait)
-extern const char* NAMASTE_ROW1_COMPACT;
-extern const char* NAMASTE_ROW2_COMPACT;
+extern const char* HEADSENSE_ROW1_COMPACT;
+extern const char* HEADSENSE_ROW2_COMPACT;
+extern const char* HEADSENSE_ROW3_COMPACT;
+extern const char* HEADSENSE_ROW4_COMPACT;
 extern const char* COMPLETE_ROW1_COMPACT;
 extern const char* COMPLETE_ROW2_COMPACT;
 extern const char* COMPLETE_ROW3_COMPACT;
@@ -239,7 +241,7 @@ void portraitDrawNavFromApi(
 // PORTRAIT STATUS SCREENS
 // =============================================================================
 
-// Welcome screen: Namaste hands + "Waiting" message
+// Welcome screen: HeadSense ASCII art box + "Waiting" message
 void portraitDrawWelcomeScreen(UBYTE* image) {
   if (image == NULL) {
     Serial.println("[NAV] ERROR: image buffer is NULL!");
@@ -249,13 +251,15 @@ void portraitDrawWelcomeScreen(UBYTE* image) {
   Paint_SelectImage(image);
   Paint_Clear(BLACK);
   
-  // Namaste ASCII art centered in upper portion
-  UWORD artX = portraitCenterX(NAMASTE_ROW1_COMPACT, FONT16_WIDTH);
-  Paint_DrawString_EN(artX, 40, NAMASTE_ROW1_COMPACT, &Font16, WHITE, WHITE);
-  Paint_DrawString_EN(artX, 58, NAMASTE_ROW2_COMPACT, &Font16, WHITE, WHITE);
+  // HeadSense ASCII art box - centered (Font8 for 8 chars)
+  UWORD artX = portraitCenterX(HEADSENSE_ROW1_COMPACT, FONT8_WIDTH);
+  Paint_DrawString_EN(artX, 30, HEADSENSE_ROW1_COMPACT, &Font8, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 42, HEADSENSE_ROW2_COMPACT, &Font8, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 54, HEADSENSE_ROW3_COMPACT, &Font8, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 66, HEADSENSE_ROW4_COMPACT, &Font8, WHITE, WHITE);
   
-  // "Waiting" text below
-  const char* msg = "Waiting...";
+  // "Waiting.." text below
+  const char* msg = "Waiting..";
   UWORD msgX = portraitCenterX(msg, FONT8_WIDTH);
   Paint_DrawString_EN(msgX, 90, msg, &Font8, WHITE, WHITE);
   
@@ -288,7 +292,7 @@ void portraitDrawDestinationPrompt(UBYTE* image) {
   Serial.println("[NAV] portraitDrawDestinationPrompt");
 }
 
-// Navigation complete screen: Checkmark + DONE + "Arrived!" message
+// Navigation complete screen: HeadSense branding + "Arrived!" message
 void portraitDrawCompleteScreen(UBYTE* image) {
   if (image == NULL) {
     Serial.println("[NAV] ERROR: image buffer is NULL!");
@@ -298,12 +302,12 @@ void portraitDrawCompleteScreen(UBYTE* image) {
   Paint_SelectImage(image);
   Paint_Clear(BLACK);
   
-  // Checkmark (tick) ASCII art + DONE centered
-  UWORD artX = portraitCenterX(COMPLETE_ROW1_COMPACT, FONT16_WIDTH);
-  UWORD doneX = portraitCenterX(COMPLETE_ROW3_COMPACT, FONT12_WIDTH);
-  Paint_DrawString_EN(artX, 30, COMPLETE_ROW1_COMPACT, &Font16, WHITE, WHITE);
-  Paint_DrawString_EN(artX, 48, COMPLETE_ROW2_COMPACT, &Font16, WHITE, WHITE);
-  Paint_DrawString_EN(doneX, 68, COMPLETE_ROW3_COMPACT, &Font12, WHITE, WHITE);
+  // HeadSense ASCII art box - centered (Font8 for 8 chars)
+  UWORD artX = portraitCenterX(HEADSENSE_ROW1_COMPACT, FONT8_WIDTH);
+  Paint_DrawString_EN(artX, 30, HEADSENSE_ROW1_COMPACT, &Font8, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 42, HEADSENSE_ROW2_COMPACT, &Font8, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 54, HEADSENSE_ROW3_COMPACT, &Font8, WHITE, WHITE);
+  Paint_DrawString_EN(artX, 66, HEADSENSE_ROW4_COMPACT, &Font8, WHITE, WHITE);
   
   // "Arrived!" text below
   const char* msg = "Arrived!";
