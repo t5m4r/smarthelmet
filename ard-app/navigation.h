@@ -26,4 +26,26 @@ enum NavInstruction {
   NAV_COUNT
 };
 
-#endif // NAVIGATION_H
+enum HeadSenseState {
+  HEADSENSE_UNINITIALIZED,
+  HEADSENSE_WELCOME,
+  HEADSENSE_TASKED,
+  HEADSENSE_TASKED_RECALCULATING,
+  HEADSENSE_TASKED_COMPLETE
+};
+
+static void prettyPrintHeadSenseState(const HeadSenseState state) {
+  if (state == HEADSENSE_UNINITIALIZED) {
+    Serial.println("HEADSENSE UNINITIALIZED");
+  } else if (state == HEADSENSE_WELCOME) {
+    Serial.println("HEADSENSE WELCOME");
+  } else if (state == HEADSENSE_TASKED) {
+    Serial.println("HEADSENSE TASKED");
+  } else if (state == HEADSENSE_TASKED_RECALCULATING) {
+    Serial.println("HEADSENSE TASKED RECALCULATING");
+  } else if (state == HEADSENSE_TASKED_COMPLETE) {
+    Serial.println("HEADSENSE TASKED COMPLETE");
+  }
+}
+
+#endif  // NAVIGATION_H

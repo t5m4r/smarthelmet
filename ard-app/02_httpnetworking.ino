@@ -4,7 +4,8 @@ void listNetworks() {
   int numSsid = WiFi.scanNetworks();
   if (numSsid == -1) {
     Serial.println("Couldn't get a WiFi connection");
-    while (true);
+    while (true)
+      ;
   }
 
   // print the list of networks seen:
@@ -27,28 +28,28 @@ void listNetworks() {
 void printEncryptionType(int thisType) {
   // read the encryption type and print out the name:
   switch (thisType) {
-  case ENC_TYPE_WEP:
-    Serial.println("WEP");
-    break;
-  case ENC_TYPE_WPA:
-    Serial.println("WPA");
-    break;
-  case ENC_TYPE_WPA2:
-    Serial.println("WPA2");
-    break;
-  case ENC_TYPE_WPA3:
-    Serial.println("WPA3");
-    break;
-  case ENC_TYPE_NONE:
-    Serial.println("None");
-    break;
-  case ENC_TYPE_AUTO:
-    Serial.println("Auto");
-    break;
-  case ENC_TYPE_UNKNOWN:
-  default:
-    Serial.println("Unknown");
-    break;
+    case ENC_TYPE_WEP:
+      Serial.println("WEP");
+      break;
+    case ENC_TYPE_WPA:
+      Serial.println("WPA");
+      break;
+    case ENC_TYPE_WPA2:
+      Serial.println("WPA2");
+      break;
+    case ENC_TYPE_WPA3:
+      Serial.println("WPA3");
+      break;
+    case ENC_TYPE_NONE:
+      Serial.println("None");
+      break;
+    case ENC_TYPE_AUTO:
+      Serial.println("Auto");
+      break;
+    case ENC_TYPE_UNKNOWN:
+    default:
+      Serial.println("Unknown");
+      break;
   }
 }
 
@@ -69,7 +70,7 @@ void printMacAddress(byte mac[]) {
 void printWifiStatus() {
   /* -------------------------------------------------------------------------- */
   // print the SSID of the network you're attached to:
-  const char * connectedSsid = WiFi.SSID();
+  const char* connectedSsid = WiFi.SSID();
   IPAddress ip = WiFi.localIP();
   const int32_t sigStrength = WiFi.RSSI();
   //Serial.println("Board is connected to WiFi: SSID " + String(connectedSsid) + ", local IP " + ip.toString() + ", and signal strength " + String(sigStrength) + "dBm");

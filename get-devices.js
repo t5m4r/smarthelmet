@@ -40,6 +40,9 @@ let lastBleSendTimestamp = 0;
 let lastBleSendLat = null;
 let lastBleSendLng = null;
 
+// Fast-forward timer state
+let fastForwardIntervalId = null;
+
 // ============ Haversine Distance Calculation ============
 
 /**
@@ -546,7 +549,7 @@ function onRequestBluetoothDeviceButtonClick() {
   const { serviceUuid } = getBleConfig();
 
   const filters = [
-    { name: 'T5M4R-ARD', services: [serviceUuid] },
+    { name: 'SID-ARD', services: [serviceUuid] },
     { services: [serviceUuid] }
   ];
 
@@ -672,6 +675,13 @@ async function connectSelectedBluetoothDevice() {
     commandCharacteristic = await service.getCharacteristic(commandUuid);
     log('[A] Found Command characteristic: ' + commandCharacteristic.uuid);
     
+    // Subscribe to notifications from Command characteristic (for responses from helmet)
+    if (commandCharacteristic.properties.notify) {
+      commandCharacteristic.addEventListener('characteristicvaluechanged', handleCommandNotification);
+      await commandCharacteristic.startNotifications();
+      log('[A] Subscribed to Command notifications');
+    }
+    
     navOriginCharacteristic = await service.getCharacteristic(navOriginUuid);
     log('[A] Found NavOrigin characteristic: ' + navOriginCharacteristic.uuid);
     
@@ -758,6 +768,139 @@ async function onSendNavigationButtonClick() {
   setTimeout(() => setNavStatus(''), 3000);
 }
 
+function handleCommandNotification(event) {
+  const value = event.target.value;
+  const decoder = new TextDecoder('utf-8');
+  const message = decoder.decode(value);
+  log('[H→A] Command: ' + message);
+  
+  // Parse INFO::NAVSTEP messages and display in UI
+  // Format: INFO::NAVSTEP:current:total:maneuver:distance:instruction
+  if (message.startsWith('INFO::NAVSTEP:')) {
+    const parts = message.substring(14).split(':');
+    log('[A] Parsing NAVSTEP, parts: ' + parts.length);
+    if (parts.length >= 5) {
+      const navStep = {
+        current: parseInt(parts[0], 10),
+        total: parseInt(parts[1], 10),
+        maneuver: parts[2],
+        distance: parts[3],
+        instruction: parts.slice(4).join(':') // instruction may contain colons
+      };
+      log('[A] NavStep parsed: step ' + (navStep.current + 1) + '/' + navStep.total + ' ' + navStep.maneuver);
+      displayNavStep(navStep);
+    } else {
+      log('[A] NAVSTEP parse failed: not enough parts');
+    }
+  }
+  
+  // Handle INFO::NAVCOMPLETED - route finished
+  if (message === 'INFO::NAVCOMPLETED') {
+    log('[A] Navigation completed!');
+    stopFastForward();
+    displayNavCompleted();
+  }
+}
+
+function displayNavCompleted() {
+  const container = document.getElementById('helmetNavStatus');
+  if (!container) return;
+  
+  container.style.display = 'block';
+  
+  const stepCounter = container.querySelector('.nav-step-counter');
+  const maneuverEl = container.querySelector('.nav-maneuver');
+  const distanceEl = container.querySelector('.nav-distance');
+  const instructionEl = container.querySelector('.nav-instruction');
+  
+  if (stepCounter) stepCounter.textContent = 'Route Complete';
+  if (maneuverEl) maneuverEl.textContent = '✓ Arrived';
+  if (distanceEl) distanceEl.textContent = '';
+  if (instructionEl) instructionEl.innerHTML = 'You have reached your destination.';
+}
+
+function displayNavStep(navStep) {
+  const container = document.getElementById('helmetNavStatus');
+  if (!container) return;
+  
+  container.style.display = 'block';
+  
+  const stepCounter = container.querySelector('.nav-step-counter');
+  const maneuverEl = container.querySelector('.nav-maneuver');
+  const distanceEl = container.querySelector('.nav-distance');
+  const instructionEl = container.querySelector('.nav-instruction');
+  
+  if (stepCounter) stepCounter.textContent = 'Step ' + (navStep.current + 1) + ' of ' + navStep.total;
+  if (maneuverEl) maneuverEl.textContent = navStep.maneuver.replace(/-/g, ' ');
+  if (distanceEl) distanceEl.textContent = navStep.distance;
+  if (instructionEl) instructionEl.innerHTML = navStep.instruction;
+}
+
+// ============ Fast-Forward Timer ============
+
+function startFastForward() {
+  stopFastForward();
+  
+  const intervalSelect = document.getElementById('fastForwardInterval');
+  const intervalSeconds = parseInt(intervalSelect?.value || '3', 10);
+  
+  log('[A] Fast-forward started (every ' + intervalSeconds + 's)');
+  
+  fastForwardIntervalId = setInterval(async () => {
+    if (!activeDevice?.gatt?.connected || !commandCharacteristic) {
+      log('[A] Fast-forward stopped: not connected');
+      stopFastForward();
+      return;
+    }
+    
+    try {
+      await commandCharacteristic.writeValueWithoutResponse(textEncoder.encode('NAV::FASTFORWARD'));
+      log('[A→H] Command: NAV::FASTFORWARD');
+    } catch (err) {
+      log('[A→H] Argh! Fast-forward write failed: ' + err);
+      stopFastForward();
+    }
+  }, intervalSeconds * 1000);
+}
+
+function stopFastForward() {
+  if (fastForwardIntervalId !== null) {
+    clearInterval(fastForwardIntervalId);
+    fastForwardIntervalId = null;
+    log('[A] Fast-forward stopped');
+  }
+  
+  const toggle = document.getElementById('fastForwardToggle');
+  if (toggle) toggle.checked = false;
+}
+
+function initFastForwardControls() {
+  const toggle = document.getElementById('fastForwardToggle');
+  const intervalSelect = document.getElementById('fastForwardInterval');
+  
+  if (toggle) {
+    log('[A] Fast-forward toggle control initialized');
+    toggle.addEventListener('change', function() {
+      log('[A] Fast-forward toggle changed: ' + this.checked);
+      if (this.checked) {
+        startFastForward();
+      } else {
+        stopFastForward();
+      }
+    });
+  } else {
+    log('[A] Fast-forward toggle element not found');
+  }
+  
+  if (intervalSelect) {
+    intervalSelect.addEventListener('change', function() {
+      if (fastForwardIntervalId !== null) {
+        startFastForward();
+      }
+    });
+  }
+}
+
 function handleDisconnection(event) {
   const device = event.target;
   log('[H→A] ' + (device.name || device.id) + ' disconnected.');
@@ -768,6 +911,13 @@ function resetConnectionState() {
   if (activeDevice) {
     activeDevice.removeEventListener('gattserverdisconnected', handleDisconnection);
   }
+  // Remove notification listener from command characteristic
+  if (commandCharacteristic) {
+    commandCharacteristic.removeEventListener('characteristicvaluechanged', handleCommandNotification);
+  }
+  // Stop fast-forward timer on disconnect
+  stopFastForward();
+  
   activeDevice = null;
   commandCharacteristic = null;
   navOriginCharacteristic = null;
@@ -998,6 +1148,7 @@ window.onload = () => {
   populateBluetoothDevices();
   renderRecentPlaces();
   initPlacesAutocomplete();
+  initFastForwardControls();
   updateUiState();
 
   // Clear selected destination button handler

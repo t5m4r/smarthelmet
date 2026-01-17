@@ -4,7 +4,7 @@
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
 #include <ArduinoBLE.h>
-#include "OLED_1in51/OLED_Driver.h" //fine
+#include "OLED_1in51/OLED_Driver.h"  //fine
 #include "OLED_1in51/GUI_paint.h"
 #include "OLED_1in51/DEV_Config.h"
 #include "OLED_1in51/Debug.h"
@@ -19,7 +19,7 @@ int wifiConnectionStatus = WL_IDLE_STATUS;
 
 BLEService smartHelmetService("19B10001-E8F2-537E-4F6C-D104768A1225");  // Bluetooth® Low Energy LED Service
 // Bluetooth® Low Energy LED Switch Characteristic - custom 128-bit UUID, read and writable by central
-BLEStringCharacteristic p2aCommandCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLEWrite, 128);
+BLEStringCharacteristic p2aCommandCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLEWrite | BLEWriteWithoutResponse | BLENotify, 512);
 BLEStringCharacteristic p2aNavOrigin("19B10002-E8F2-537E-4F6C-D104768A1215", BLEWrite, 128);
 BLEStringCharacteristic p2aNavDestination("19B10002-E8F2-537E-4F6C-D104768A1216", BLEWrite, 128);
 // WiFiSSLClient is a Minimilist TLS client, but is difficult to use with Google APIs since it doesn't support HTTP helper functions/features.
@@ -29,8 +29,13 @@ extern const char kHostname[];
 
 long previousMillis = 0;  // last time the repeat work was done
 int current_step = 0;
+int last_rendered_step = -1;  // Track which step was last sent/rendered
 
-bool doHttpWork = false;
+// Marks a flag that we need to (refresh) directions from the Google API web service
+bool areCachedDirectionsDirty = true;
+HeadSenseState headSenseState = HEADSENSE_UNINITIALIZED;
+JsonDocument routingJson;
+JsonArray navSteps;
 
 // OLED orientation: true = landscape (128x64, Rotate=270), false = portrait (64x128, Rotate=0)
 bool isLandscapeOLED = false;
@@ -38,7 +43,7 @@ bool isLandscapeOLED = false;
 extern UBYTE *BlackImage;  // From OLED_1in51.ino
 
 void setup() {
-  //Initialize serial and wait for port to open:
+  // Initialize serial and wait for port to open:
   Serial.begin(115200);  // Let it rip
 
   // BT-LE init
@@ -47,8 +52,8 @@ void setup() {
     while (1)
       ;
   }
-  BLE.setLocalName("T5M4R-ARD");
-  BLE.setDeviceName("T5M4R-ARD");
+  BLE.setLocalName("SID-ARD");
+  BLE.setDeviceName("SID-ARD");
 
   BLE.setAdvertisedService(smartHelmetService);  // add the service UUID
 
@@ -91,7 +96,7 @@ void setup() {
   if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
     Serial.println("Please upgrade the firmware");
   }
-  Serial.println("Board running Wifi firmware version: " + fv);
+  Serial.println("Board running firmware version: " + fv);
 
   // attempt to connect to WiFi network:
   while (wifiConnectionStatus != WL_CONNECTED) {
@@ -107,6 +112,7 @@ void setup() {
     printWifiStatus();
   }
   oled_setup(isLandscapeOLED);
+  prettyPrintHeadSenseState(headSenseState);
 }
 
 void loop() {
@@ -117,10 +123,6 @@ void loop() {
     listNetworks();
   }
 
-  //byte mac[6];
-  //WiFi.macAddress(mac);
-  //Serial.print("Board's MAC Address: ");
-  //printMacAddress(mac);
   if (wifiConnectionStatus == WL_CONNECTED) {
     printWifiStatus();
   }
@@ -130,132 +132,114 @@ void loop() {
   BLEDevice central = BLE.central();
   // BT-LE end of repeat work
 
+  if (headSenseState == HEADSENSE_TASKED_COMPLETE) {
+    //Serial.println("Directions COMPLETED :)");
+    return;
+  }
+
   // Add real work below this line
+  // TODO: Figure out where to do .clear() on this presumably large JSON object when it's invalidated as cached data
+  const String origin = p2aNavOrigin.value();
+  const String destination = p2aNavDestination.value();
+  //Serial.println("Origin: " + origin + ", Destination: " + destination);
+  //prettyPrintHeadSenseState(headSenseState);
+  //Serial.println(areCachedDirectionsDirty);
+  if (
+    (headSenseState == HEADSENSE_TASKED || headSenseState == HEADSENSE_TASKED_RECALCULATING)
+    && (origin != "UNINITIALIZED" && destination != "UNINITIALIZED")
+    && areCachedDirectionsDirty) {
 
-  int err = 0;
+    prettyPrintHeadSenseState(headSenseState);
 
-  if (doHttpWork) {
-    // This is the official project's ArduinoHttpClient library from the Library Manager
-    HttpClient httpsClient = HttpClient(wifiSslClient, kHostname, HttpClient::kHttpsPort); 
-    const String origin = p2aNavOrigin.value();
-    const String destination = p2aNavDestination.value();
-    err = httpsClient.get(buildGoogleNavigationUrlPath(origin, destination, googleMapsApiKey));
-    if (err == 0) {
-      int httpResponseCode = httpsClient.responseStatusCode();
-      if (httpResponseCode >= 0) {
-        Serial.println("HTTP response code: " + String(httpResponseCode));
-
-        // Usually you'd check that the response code is 200 or a
-        // similar "success" code (200-299) before carrying on,
-        // but we'll print out whatever response we get
-        // If you are interesting in the response headers, you
-        // can read them here:
-        //while(http.headerAvailable())
-        //{
-        //  String headerName = http.readHeaderName();
-        //  String headerValue = http.readHeaderValue();
-        //}
-        int bodyLen = httpsClient.contentLength();
-        Serial.println("HTTP response's content length is: " + String(bodyLen) + " bytes");
-
-        JsonDocument jsonDoc;
-        unsigned long timeoutStart = millis();
-        // Whilst we haven't timed out & haven't reached the end of the body
-        while ((httpsClient.connected() || httpsClient.available()) && (!httpsClient.endOfBodyReached()) && ((millis() - timeoutStart) < kNetworkTimeout)) {
-          if (httpsClient.available()) {
-            JsonDocument filter;
-            JsonObject filter_routes_0_legs_0_steps_0 = filter["routes"][0]["legs"][0]["steps"].add<JsonObject>();
-            filter_routes_0_legs_0_steps_0["html_instructions"] = true;
-            filter_routes_0_legs_0_steps_0["maneuver"] = true;
-            filter_routes_0_legs_0_steps_0["distance"]["text"] = true;
-            // Now we've got to the HTTP response body, so we can feed it to a JSON processor/parser.
-            DeserializationError error = deserializeJson(jsonDoc, httpsClient, DeserializationOption::Filter(filter));
-            switch (error.code()) {
-              case DeserializationError::Ok:
-                Serial.println(String("Deserialization of JSON succeeded. "));
-                httpsClient.stop();  // This marks as this request-request pair as successfully done, and effectively helps us break out from the while() loop above.
-                break;
-              case DeserializationError::EmptyInput:
-                Serial.println("Deserialization of JSON - No data to parse");  // We don't .stop() the HTTP request in this case, as we may need to wait for data to be available.
-                break;
-              case DeserializationError::InvalidInput:
-              case DeserializationError::NoMemory:
-                Serial.print("Deserializarion error: ");
-                Serial.println(error.code());
-              default:
-                Serial.println("Deserialization failed! " + error.code());
-                httpsClient.stop();  // This marks as this request-request pair as successfully done, and effectively helps us break out from the while() loop above.
-                break;
-            }
-            // We read something, reset the timeout counter
-            timeoutStart = millis();
-          } else {
-            // We haven't got any data, so let's pause to allow some to arrive
-            Serial.println("Http data stream isn't ready yet, sleeping for " + kNetworkDelay / 1000);
-            delay(kNetworkDelay);
-          }
-        }  // While loop for waiting for, plus reading the response of a single API request/response
-
-        // Processing of JSON document from HTTP API response
-        JsonArray navSteps = jsonDoc["routes"][0]["legs"][0]["steps"];
-        Serial.println("Number of steps is: " + String(navSteps.size()));
-        if (current_step >= navSteps.size()) {
-          doHttpWork = false;
-          current_step = 0;
-          return;
-        }
-        
-        // Extract navigation data from current step
-        JsonObject step = navSteps[current_step];
-        
-        // Get maneuver (may not exist for first step "Head southwest")
-        const char* maneuver = "continue";  // Default if no maneuver specified
-        if (step["maneuver"].is<String>()) {
-          maneuver = step["maneuver"].as<const char*>();
-        }
-        
-        // Get distance text
-        const char* distanceText = "";
-        if (step["distance"]["text"].is<String>()) {
-          distanceText = step["distance"]["text"].as<const char*>();
-        }
-        
-        // Get html_instructions
-        const char* htmlInstructions = "";
-        if (step["html_instructions"].is<String>()) {
-          htmlInstructions = step["html_instructions"].as<const char*>();
-        }
-        
-        // Log extracted data
-        Serial.print("STEP ");
-        Serial.print(current_step);
-        Serial.print(" -> ");
-        Serial.print(maneuver);
-        Serial.print(" | ");
-        Serial.print(distanceText);
-        Serial.print(" | ");
-        Serial.println(stripHtmlTags(htmlInstructions));
-        
-        // Render to OLED using quadrant layout with full navigation info
-        drawNavFromApi(maneuver, distanceText, htmlInstructions, BlackImage, isLandscapeOLED);
-        OLED_1IN51_Display(BlackImage);
-        
-        current_step++;
-        navSteps.clear();
-        jsonDoc.clear();
-      } else {
-        Serial.println("Error getting HTTP response, code " + httpResponseCode);
-      }
+    Serial.println("Refresh directions - deciding to call");
+    routingJson = refreshDirections(origin, destination, googleMapsApiKey);
+    if (routingJson.isNull()) {
+      Serial.println("Refresh directions - NULL results JSON");
     } else {
-      Serial.println(String("HTTP request couldn't be sent out: ") + err);
+      Serial.println("Refresh directions - HAPPY JSON results :)");
+      areCachedDirectionsDirty = false;
+      current_step = 0;
+      last_rendered_step = -1;  // Force re-render of step 0
+      // Processing of JSON document from HTTP API response
+      navSteps = routingJson["routes"][0]["legs"][0]["steps"];
     }
-    httpsClient.stop();
-  }  // end of single HTTP/API request block
+  }
 
+  if (!(headSenseState == HEADSENSE_TASKED || headSenseState == HEADSENSE_TASKED_RECALCULATING)) {
+    return;
+  }
+
+  // We may be waiting for other user events or Bluetooth communications to fall into place; so we may
+  // not have useful work to do in each loop iteration. That's OK - don't fret.
+  if (routingJson.isNull()) {
+    Serial.println("NOT GOOD: EMPTY ROUTING DIRECTIONS JSON :(");
+    return;
+  }
+
+  //prettyPrintHeadSenseState(headSenseState);
+
+  if (navSteps.size() == 0) {
+    //Serial.println("navSteps ARE ZERO SIZED");
+    return;
+  }
+
+  //Serial.println("Number of steps is: " + String(navSteps.size()));
+  if (current_step >= navSteps.size()) {
+    current_step = 0;
+    if (headSenseState != HEADSENSE_TASKED_COMPLETE) {
+      headSenseState = HEADSENSE_TASKED_COMPLETE;
+      sendNavCompleted(p2aCommandCharacteristic);
+    }
+    return;
+  }
+
+  // Only send/render if step changed since last time
+  if (current_step == last_rendered_step) {
+    return;
+  }
+
+  // Extract navigation data from current step
+  JsonObject step = navSteps[current_step];
+
+  // Get maneuver (may not exist for first step "Head southwest")
+  const char *maneuver = "continue";  // Default if no maneuver specified
+  if (step["maneuver"].is<String>()) {
+    maneuver = step["maneuver"].as<const char *>();
+  }
+
+  // Get distance text
+  const char *distanceText = "";
+  if (step["distance"]["text"].is<String>()) {
+    distanceText = step["distance"]["text"].as<const char *>();
+  }
+
+  // Get html_instructions
+  const char *htmlInstructions = "";
+  if (step["html_instructions"].is<String>()) {
+    htmlInstructions = step["html_instructions"].as<const char *>();
+  }
+
+  // Log extracted data
+  Serial.print("STEP ");
+  Serial.print(current_step);
+  Serial.print(" -> ");
+  Serial.print(maneuver);
+  Serial.print(" | ");
+  Serial.print(distanceText);
+  Serial.print(" | ");
+  Serial.println(stripHtmlTags(htmlInstructions));
+
+  sendNavStepToPeer(p2aCommandCharacteristic, current_step, navSteps.size(), maneuver, distanceText, htmlInstructions);
+
+  // Render to OLED using quadrant layout with full navigation info
+  drawNavFromApi(maneuver, distanceText, htmlInstructions, BlackImage, isLandscapeOLED);
+  OLED_1IN51_Display(BlackImage);
+
+  last_rendered_step = current_step;
   // Add real work ABOVE THIS LINE
+}
 
-  // Idle time
-  //const unsigned long sleepTime = 3000;
-  //Serial.println("Me lazy, sleeping for " + String(sleepTime / 1000) + "s");
-  //delay(sleepTime);
+void incrementNavStep() {
+  current_step++;
+  Serial.println("NAV STEP SHOULD NOW SHOW: " + String(current_step));
 }

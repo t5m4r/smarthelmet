@@ -1,7 +1,7 @@
 // HeadSense Service Worker
 // Required for PWA installability on Chrome for Android
 
-const CACHE_NAME = 'headsense-v11';
+const CACHE_NAME = 'headsense-v17';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
