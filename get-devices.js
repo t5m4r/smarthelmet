@@ -549,7 +549,7 @@ function onRequestBluetoothDeviceButtonClick() {
   const { serviceUuid } = getBleConfig();
 
   const filters = [
-    { name: 'SID-ARD', services: [serviceUuid] },
+    { name: 'T5M4R-ARD', services: [serviceUuid] },
     { services: [serviceUuid] }
   ];
 

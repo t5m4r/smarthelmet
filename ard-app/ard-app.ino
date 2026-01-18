@@ -52,8 +52,8 @@ void setup() {
     while (1)
       ;
   }
-  BLE.setLocalName("SID-ARD");
-  BLE.setDeviceName("SID-ARD");
+  BLE.setLocalName("T5M4R-ARD");
+  BLE.setDeviceName("T5M4R-ARD");
 
   BLE.setAdvertisedService(smartHelmetService);  // add the service UUID
 
